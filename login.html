@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>התחברות1</title>
+    <title>התחברות</title>
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
@@ -22,23 +22,30 @@
 
     <!-- הוספת לוגיקה מותאמת -->
     <script type="module">
-        import { loginUser } from "./scripts/firebase.js";
+        import { auth, loginUser, getUserRole } from "./scripts/firebase.js";
 
-        // טיפול באירוע התחברות
-        document.getElementById("loginForm").addEventListener("submit", async (event) => {
-            event.preventDefault(); // מניעת רענון הדף
+        document.getElementById('loginForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
 
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
 
             try {
-                await loginUser(email, password); // קריאה לפונקציית התחברות
-                alert("התחברות מוצלחת! מפנה לעמוד פרופיל...");
-                window.location.href = "userProfile.html"; // מעבר לעמוד הפרופיל
+                const userCredential = await loginUser(email, password);
+                const user = userCredential.user;
+
+                // בדיקת תפקיד המשתמש
+                const role = await getUserRole(user.uid);
+                if (role === 'admin') {
+                    window.location.href = "adminDashboard.html";
+                } else if (role === 'user') {
+                    window.location.href = "userProfile.html";
+                } else {
+                    alert("שגיאה בזיהוי התפקיד!");
+                }
             } catch (error) {
-                console.error("שגיאה בהתחברות:", error.message);
-                alert("שגיאה בהתחברות: " + error.message);
-            }
+                console.error("שגיאה בהתחברות: ", error.message);
+            }
         });
     </script>
 </body>
