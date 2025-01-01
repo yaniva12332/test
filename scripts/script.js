@@ -1,138 +1,143 @@
-// פונקציה להירשם למערכת
-function registerUser(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const username = form.username.value;
-    const email = form.email.value;
-    const password = form.password.value;
-    
-    if (!username || !email || !password) {
-        alert("נא למלא את כל השדות");
-        return;
-    }
+// ייבוא הפונקציות הנדרשות מ-SDK של Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, doc, setDoc, getDocs, updateDoc, deleteDoc, getDoc, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-    // חיבור ל- Firebase או כל מערכת ניהול משתמשים
-    firebase.auth().createUserWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-            const user = userCredential.user;
-            alert("ההרשמה בוצעה בהצלחה!");
-            window.location.href = "login.html";
-        })
-        .catch((error) => {
-            alert(error.message);
+
+// הגדרות Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyBl5OFssavusVyq6obQk6lzpeGhTOKPjVg",
+    authDomain: "timemaster-fdd5b.firebaseapp.com",
+    databaseURL: "https://timemaster-fdd5b-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "timemaster-fdd5b",
+    storageBucket: "timemaster-fdd5b.firebasestorage.app",
+    messagingSenderId: "536960942402",
+    appId: "1:536960942402:web:e8f3393df514b48650c8db",
+    measurementId: "G-XQR4XYFESB"
+};
+
+// אתחול Firebase
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+// רישום משתמש חדש
+export async function registerUser(username, email, password) {
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        console.log("משתמש נרשם בהצלחה: ", user);
+
+        // הוספת שם המשתמש למסד הנתונים
+        await setDoc(doc(db, "users", user.uid), {
+            username,
+            email,
+            uid: user.uid
         });
+
+        console.log("שם המשתמש נוסף בהצלחה למסד נתונים");
+        window.location.href = "userProfile.html";
+    } catch (error) {
+        console.error("שגיאה בהרשמה: ", error.message);
+    }
 }
 
-// פונקציה להתחברות
-function loginUser(event) {
-    event.preventDefault();
-
-    const form = event.target;
-    const email = form.email.value;
-    const password = form.password.value;
-
-    if (!email || !password) {
-        alert("נא למלא את כל השדות");
-        return;
+// התחברות למערכת
+export async function loginUser(email, password) {
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        console.log("המשתמש התחבר בהצלחה: ", user);
+        window.location.href = "userProfile.html";
+    } catch (error) {
+        console.error("שגיאה בהתחברות: ", error.message);
     }
+}
 
-    // חיבור ל- Firebase
-    firebase.auth().signInWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-            const user = userCredential.user;
-            alert("ההתחברות בוצעה בהצלחה!");
-            window.location.href = "userProfile.html";
-        })
-        .catch((error) => {
-            alert(error.message);
+// יציאה מהמערכת
+export async function logoutUser() {
+    try {
+        await signOut(auth);
+        console.log("המשתמש יצא בהצלחה");
+        window.location.href = "login.html";
+    } catch (error) {
+        console.error("שגיאה ביציאה: ", error.message);
+    }
+}
+
+// הוספת תור
+export async function addAppointment(userId, service, date, time) {
+    try {
+        const docRef = await addDoc(collection(db, "appointments"), {
+            userId,
+            service,
+            date,
+            time
         });
-}
-
-// פונקציה להוספת תור חדש
-function addAppointment(event) {
-    event.preventDefault();
-
-    const form = event.target;
-    const name = form.name.value;
-    const service = form.service.value;
-    const date = form.date.value;
-    const time = form.time.value;
-
-    if (!name || !service || !date || !time) {
-        alert("נא למלא את כל השדות");
-        return;
+        console.log("התור נוסף בהצלחה: ", docRef.id);
+    } catch (error) {
+        console.error("שגיאה בהוספת התור: ", error.message);
     }
-
-    // חיבור למסד נתונים או מערכת לניהול תורים (Firebase או SQL)
-    const appointmentRef = firebase.firestore().collection("appointments");
-    appointmentRef.add({
-        name: name,
-        service: service,
-        date: date,
-        time: time
-    })
-    .then(() => {
-        alert("התור נוסף בהצלחה!");
-        window.location.href = "appointments.html";
-    })
-    .catch((error) => {
-        alert("שגיאה בהוספת התור: " + error.message);
-    });
 }
 
-// פונקציה לשליחת הודעות SMS באמצעות Twilio
-function sendSms(phoneNumber, message) {
-    const accountSid = 'YOUR_TWILIO_ACCOUNT_SID';
-    const authToken = 'YOUR_TWILIO_AUTH_TOKEN';
-
-    const client = require('twilio')(accountSid, authToken);
-
-    client.messages
-        .create({
-            body: message,
-            from: '+1234567890', // מספר טלפון של Twilio
-            to: phoneNumber
-        })
-        .then(message => console.log(message.sid))
-        .catch(error => console.error("שגיאה בשליחת SMS:", error));
-}
-
-// פונקציה למילוי טופס ההזמנה
-function fillBookingForm(service, date, time) {
-    document.querySelector("#service").value = service;
-    document.querySelector("#date").value = date;
-    document.querySelector("#time").value = time;
-}
-
-// דינמיקה של הצגת/הסתרת פורמטים (כמו טופס הוספת תור)
-function toggleForm() {
-    const form = document.getElementById("appointment-form");
-    form.style.display = form.style.display === "none" ? "block" : "none";
-}
-
-// פונקציה לעדכון התורים בעסק
-function updateAppointment(appointmentId, newDetails) {
-    // חיבור למסד נתונים (כמו Firebase או SQL)
-    const appointmentRef = firebase.firestore().collection("appointments").doc(appointmentId);
-    appointmentRef.update(newDetails)
-        .then(() => {
-            alert("התור עודכן בהצלחה!");
-            window.location.href = "appointments.html";
-        })
-        .catch((error) => {
-            alert("שגיאה בעדכון התור: " + error.message);
+// קריאת תורים של משתמש
+export async function getUserAppointments(userId) {
+    try {
+        const q = query(collection(db, "appointments"), where("userId", "==", userId));
+        const querySnapshot = await getDocs(q);
+        const appointments = [];
+        querySnapshot.forEach((doc) => {
+            appointments.push({ id: doc.id, ...doc.data() });
         });
+        return appointments;
+    } catch (error) {
+        console.error("שגיאה בקריאת התורים: ", error.message);
+        return [];
+    }
+}
+// מחיקת תור
+export async function deleteAppointment(appointmentId) {
+    try {
+        await deleteDoc(doc(db, "appointments", appointmentId));
+        console.log("תור נמחק בהצלחה.");
+    } catch (error) {
+        console.error("שגיאה במחיקת התור:", error.message);
+        throw error;
+    }
 }
 
-// פונקציה להורדת פרטי פרופיל המשתמש
-function getUserProfile() {
-    const user = firebase.auth().currentUser;
+export async function updateAppointment(appointmentId, service, date, time) {
+    try {
+        const appointmentRef = doc(db, "appointments", appointmentId);
+        await updateDoc(appointmentRef, {
+            service,
+            date,
+            time,
+        });
+        console.log("התור עודכן בהצלחה");
+    } catch (error) {
+        console.error("שגיאה בעדכון התור:", error.message);
+        throw error;
+    }
+}
 
-    if (user) {
-        document.querySelector("#user-name").textContent = user.displayName;
-        document.querySelector("#user-email").textContent = user.email;
-    } else {
-        alert("לא התחברת. נא התחבר כדי לראות את פרטי הפרופיל.");
+// קבלת פרטי משתמש
+export async function fetchUserData(userId) {
+    try {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        if (userDoc.exists()) {
+            return userDoc.data();
+        } else {
+            console.log("לא נמצאו נתוני משתמש");
+            return null;
+        }
+    } catch (error) {
+        console.error("שגיאה בקבלת נתוני המשתמש: ", error.message);
+        return null;
     }
+}
+
+// מעקב אחר מצב האותנטיקציה
+export function onAuthStateChangedListener(callback) {
+    onAuthStateChanged(auth, callback);
 }
