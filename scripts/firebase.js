@@ -1,171 +1,80 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { doc, getDoc, collection, query, where, getDocs }from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פרופיל משתמש</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <h1>פרופיל משתמש</h1>
+    <section>
+        <h2>פרטי משתמש</h2>
+        <p><strong>שם משתמש:</strong> <span id="username">טוען...</span></p>
+        <p><strong>אימייל:</strong> <span id="email">טוען...</span></p>
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBl5OFssavusVyq6obQk6lzpeGhTOKPjVg",
-    authDomain: "timemaster-fdd5b.firebaseapp.com",
-    databaseURL: "https://timemaster-fdd5b-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "timemaster-fdd5b",
-    storageBucket: "timemaster-fdd5b.firebasestorage.app",
-    messagingSenderId: "536960942402",
-    appId: "1:536960942402:web:e8f3393df514b48650c8db",
-    measurementId: "G-XQR4XYFESB"
-};
+        <h2>תורים עתידיים</h2>
+        <ul id="appointments-list">
+            <li>טוען תורים...</li>
+        </ul>
+    </section>
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+    <button id="logoutButton">התנתק</button>
 
+    <footer>
+        <p>&copy; 2024 TimeMaster. כל הזכויות שמורות.</p>
+    </footer>
 
-// פונקציה לרישום משתמש חדש
-export function registerUser(username, email, password) {
-    createUserWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            const user = userCredential.user;
-            console.log("משתמש נרשם בהצלחה: ", user);
+    <!-- הוספת לוגיקה מותאמת -->
+    <script type="module">
+        import { auth, fetchUserData, getUserAppointments, logoutUser, onAuthStateChangedListener } from "./scripts/firebase.js";
 
-            // הוספת שם המשתמש למסד הנתונים של Firestore
-            setDoc(doc(db, "users", user.uid), {
-                username: username,  // הוספת שם המשתמש
-                email: email,
-                uid: user.uid
-            })
-            .then(() => {
-                console.log("שם המשתמש נוסף בהצלחה למסד נתונים");
-                window.location.href = "https://timemaster-fdd5b.web.app/userProfile.html";
-            })
-            .catch((error) => {
-                console.error("שגיאה בהוספת שם המשתמש למסד הנתונים: ", error.message);
+        document.addEventListener("DOMContentLoaded", () => {
+            const emailSpan = document.getElementById("email");
+            const usernameSpan = document.getElementById("username");
+            const appointmentsList = document.getElementById("appointments-list");
+
+            // מעקב אחר מצב התחברות
+            onAuthStateChangedListener(async (user) => {
+                if (!user) {
+                    alert("לא מחובר! מפנה לדף התחברות...");
+                    window.location.href = "login.html";
+                    return;
+                }
+
+                try {
+                    // הצגת פרטי המשתמש
+                    emailSpan.textContent = user.email;
+                    const userData = await fetchUserData(user.uid);
+                    usernameSpan.textContent = userData?.username || "לא נמצא שם משתמש";
+
+                    // הצגת תורים
+                    const appointments = await getUserAppointments(user.uid);
+                    appointmentsList.innerHTML = ""; // נקה רשימה
+                    if (appointments.length === 0) {
+                        appointmentsList.innerHTML = "<li>אין תורים עתידיים</li>";
+                    } else {
+                        appointments.forEach((appointment) => {
+                            const li = document.createElement("li");
+                            li.textContent = `${appointment.service} - ${appointment.date} - ${appointment.time}`;
+                            appointmentsList.appendChild(li);
+                        });
+                    }
+                } catch (error) {
+                    console.error("שגיאה בטעינת הנתונים: ", error.message);
+                }
             });
 
-        })
-        .catch((error) => {
-            console.error("שגיאה בהרשמה: ", error.message);
-        });
-}
-
-// פונקציות נוספות כאן (למשל login, logout, וכו')
-
-// פונקציה להתחברות למערכת
-export function loginUser(email, password) {
-    auth.signInWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-            const user = userCredential.user;
-            console.log("המשתמש התחבר בהצלחה: ", user);
-        })
-        .catch((error) => {
-            console.error("שגיאה בהתחברות: ", error.message);
-        });
-}
-
-// פונקציה לצאת מהמערכת
-export function logoutUser() {
-    auth.signOut().then(() => {
-        console.log("המשתמש יצא בהצלחה");
-    }).catch((error) => {
-        console.error("שגיאה ביציאה: ", error.message);
-    });
-}
-
-// פונקציה להוספת תור למסד נתונים
-export function addAppointment(name, service, date, time) {
-    db.collection("appointments").add({
-        name: name,
-        service: service,
-        date: date,
-        time: time
-    })
-    .then((docRef) => {
-        console.log("התור נוסף בהצלחה: ", docRef.id);
-    })
-    .catch((error) => {
-        console.error("שגיאה בהוספת התור: ", error.message);
-    });
-}
-
-// פונקציה לקרוא את כל התורים מהמסד נתונים
-export function getAppointments() {
-    db.collection("appointments").get()
-        .then((querySnapshot) => {
-            querySnapshot.forEach((doc) => {
-                console.log(doc.id, " => ", doc.data());
+            // יציאה מהמערכת
+            document.getElementById("logoutButton").addEventListener("click", async () => {
+                try {
+                    await logoutUser();
+                    window.location.href = "login.html";
+                } catch (error) {
+                    console.error("שגיאה ביציאה: ", error.message);
+                }
             });
-        })
-        .catch((error) => {
-            console.error("שגיאה בקריאת התורים: ", error.message);
         });
-}
-
-// פונקציה לעדכן תור קיים
-export function updateAppointment(appointmentId, newDetails) {
-    const appointmentRef = db.collection("appointments").doc(appointmentId);
-    appointmentRef.update(newDetails)
-        .then(() => {
-            console.log("התור עודכן בהצלחה");
-        })
-        .catch((error) => {
-            console.error("שגיאה בעדכון התור: ", error.message);
-        });
-}
-
-// פונקציה למחוק תור
-export function deleteAppointment(appointmentId) {
-    const appointmentRef = db.collection("appointments").doc(appointmentId);
-    appointmentRef.delete()
-        .then(() => {
-            console.log("התור נמחק בהצלחה");
-        })
-        .catch((error) => {
-            console.error("שגיאה בהסרת התור: ", error.message);
-        });
-}
-
-// פונקציה לקבלת פרטי המשתמש הנוכחי
-export function getCurrentUser() {
-    const user = auth.currentUser;
-    if (user) {
-        console.log("המשתמש המחובר: ", user);
-    } else {
-        console.log("לא מחובר");
-    }
-}
-
-// שליפת נתוני משתמש
-export async function fetchUserData(uid) {
-    try {
-        const userDoc = await getDoc(doc(db, "users", uid));
-        if (userDoc.exists()) {
-            return userDoc.data();
-        } else {
-            throw new Error("User not found");
-        }
-    } catch (error) {
-        console.error("Error fetching user data: ", error.message);
-        throw error;
-    }
-}
-
-// שליפת תורים של המשתמש
-export async function fetchAppointments(uid) {
-    try {
-        const appointmentsQuery = query(
-            collection(db, "appointments"),
-            where("userId", "==", uid)
-        );
-        const querySnapshot = await getDocs(appointmentsQuery);
-        const appointments = [];
-        querySnapshot.forEach((doc) => {
-            appointments.push(doc.data());
-        });
-        return appointments;
-    } catch (error) {
-        console.error("Error fetching appointments: ", error.message);
-        throw error;
-    }
-}
-
-
-// חיבור עם Firebase Analytics (אם יש צורך)
-//firebase.analytics();
+    </script>
+</body>
+</html>
