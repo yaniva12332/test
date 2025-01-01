@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
-    <h1>פרופיל משתמש</h1>
+    <h1>פרופיל מתשתמש</h1>
     <section>
         <h2>פרטי משתמש</h2>
         <p><strong>שם משתמש:</strong> <span id="username">טוען...</span></p>
@@ -43,7 +43,7 @@
 
     <!-- הוספת לוגיקה מותאמת -->
     <script type="module">
-        import { auth, fetchUserData, getUserAppointments, addAppointment, logoutUser, onAuthStateChangedListener } from "./scripts/firebase.js";
+        import { auth, fetchUserData, getUserAppointments, addAppointment, logoutUser, onAuthStateChangedListener, deleteAppointment } from "./scripts/firebase.js";
 
         document.addEventListener("DOMContentLoaded", () => {
             const emailSpan = document.getElementById("email");
@@ -73,7 +73,24 @@
                         appointments.forEach((appointment) => {
                             const li = document.createElement("li");
                             li.textContent = `${appointment.service} - ${appointment.date} - ${appointment.time}`;
+                            // כפתור מחיקה
+                            const deleteButton = document.createElement("button");
+                            deleteButton.textContent = "מחק";
+                            deleteButton.addEventListener("click", async () => {
+                                if (confirm("האם אתה בטוח שברצונך למחוק את התור?")) {
+                                    try {
+                                        await deleteAppointment(appointment.id);
+                                        li.remove(); // הסר את התור מהרשימה
+                                        alert("התור נמחק בהצלחה!");
+                                    } catch (error) {
+                                        console.error("שגיאה במחיקת תור:", error.message);
+                                        alert("שגיאה במחיקת התור: " + error.message);
+                                    }
+                                }
+                            });
+                            li.appendChild(deleteButton);
                             appointmentsList.appendChild(li);
+                            
                         });
                     }
                 } catch (error) {
