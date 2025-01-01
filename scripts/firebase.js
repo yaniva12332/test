@@ -3,6 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { getFirestore, collection, addDoc, doc, setDoc, getDocs, updateDoc, deleteDoc, getDoc, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
+
 // הגדרות Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyBl5OFssavusVyq6obQk6lzpeGhTOKPjVg",
@@ -17,44 +18,28 @@ const firebaseConfig = {
 
 // אתחול Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 // רישום משתמש חדש
 export async function registerUser(username, email, password) {
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-
-        console.log("משתמש נרשם בהצלחה:", user);
+        console.log("משתמש נרשם בהצלחה: ", user);
 
         // הוספת שם המשתמש למסד הנתונים
         await setDoc(doc(db, "users", user.uid), {
             username,
             email,
-            uid: user.uid,
+            uid: user.uid
         });
 
         console.log("שם המשתמש נוסף בהצלחה למסד נתונים");
-        window.location.href = "userProfile.html"; // מעבר לעמוד פרופיל
+        window.location.href = "userProfile.html";
     } catch (error) {
-        console.error("שגיאה בהרשמה:", error.message);
-
-        // טיפול בשגיאות נפוצות
-        switch (error.code) {
-            case "auth/email-already-in-use":
-                alert("המייל כבר קיים במערכת.");
-                break;
-            case "auth/invalid-email":
-                alert("כתובת מייל לא תקינה.");
-                break;
-            case "auth/weak-password":
-                alert("הסיסמה חלשה מדי.");
-                break;
-            default:
-                alert("שגיאה בהרשמה: " + error.message);
-        }
-    }
+        console.error("שגיאה בהרשמה: ", error.message);
+    }
 }
 
 // התחברות למערכת
