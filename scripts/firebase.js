@@ -95,6 +95,16 @@ export async function getUserAppointments(userId) {
         return [];
     }
 }
+// מחיקת תור
+export async function deleteAppointment(appointmentId) {
+    try {
+        await deleteDoc(doc(db, "appointments", appointmentId));
+        console.log("תור נמחק בהצלחה.");
+    } catch (error) {
+        console.error("שגיאה במחיקת התור:", error.message);
+        throw error;
+    }
+}
 
 // קבלת פרטי משתמש
 export async function fetchUserData(userId) {
