@@ -9,7 +9,7 @@
 <body>
     <h1>פרופיל משתמש</h1>
     <section>
-        <h2>פרטי מ2שתמש</h2>
+        <h2>פרטי משתמש</h2>
         <p><strong>שם משתמש:</strong> <span id="username">טוען...</span></p>
         <p><strong>אימייל:</strong> <span id="email">טוען...</span></p>
 
@@ -19,6 +19,22 @@
         </ul>
     </section>
 
+    <section>
+        <h2>הוסף תור חדש</h2>
+        <form id="addAppointmentForm">
+            <label for="service">שירות:</label>
+            <input type="text" id="service" required>
+
+            <label for="date">תאריך:</label>
+            <input type="date" id="date" required>
+
+            <label for="time">שעה:</label>
+            <input type="time" id="time" required>
+
+            <button type="submit">הוסף תור</button>
+        </form>
+    </section>
+
     <button id="logoutButton">התנתק</button>
 
     <footer>
@@ -27,7 +43,7 @@
 
     <!-- הוספת לוגיקה מותאמת -->
     <script type="module">
-        import { auth, fetchUserData, getUserAppointments, logoutUser, onAuthStateChangedListener } from "./scripts/firebase.js";
+        import { auth, fetchUserData, getUserAppointments, addAppointment, logoutUser, onAuthStateChangedListener } from "./scripts/firebase.js";
 
         document.addEventListener("DOMContentLoaded", () => {
             const emailSpan = document.getElementById("email");
@@ -73,6 +89,34 @@
                 } catch (error) {
                     console.error("שגיאה ביציאה: ", error.message);
                 }
+            });
+            // הוספת תור חדש
+            const addAppointmentForm = document.getElementById("addAppointmentForm");
+            addAppointmentForm.addEventListener("submit", async (event) => {
+                event.preventDefault();
+
+                const service = document.getElementById("service").value;
+                const date = document.getElementById("date").value;
+                const time = document.getElementById("time").value;
+
+                // מניעת הוספת תאריך מהעבר
+                const selectedDate = new Date(date);
+                const currentDate = new Date();
+                currentDate.setHours(0, 0, 0, 0); // איפוס שעה
+
+                if (selectedDate < currentDate) {
+                    alert("לא ניתן לבחור תאריך מהעבר!");
+                    return;
+                }
+
+                try {
+                    await addAppointment(auth.currentUser.uid, service, date, time);
+                    alert("התור נוסף בהצלחה!");
+                    window.location.reload(); // טען מחדש את העמוד
+                } catch (error) {
+                    console.error("שגיאה בהוספת תור:", error.message);
+                    alert("שגיאה בהוספת תור: " + error.message);
+                }
             });
         });
     </script>
