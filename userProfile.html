@@ -56,7 +56,7 @@
                     } else {
                         appointments.forEach((appointment) => {
                             const li = document.createElement("li");
-                            li.textContent = ${appointment.service} - `${appointment.date} - ${appointment.time}`;
+                            li.textContent = `${appointment.service} - ${appointment.date} - ${appointment.time}`;
                             appointmentsList.appendChild(li);
                         });
                     }
