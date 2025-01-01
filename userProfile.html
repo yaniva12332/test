@@ -25,17 +25,17 @@
         <p>&copy; 2024 TimeMaster. כל הזכויות שמורות.</p>
     </footer>
 
+    <!-- הוספת לוגיקה מותאמת -->
     <script type="module">
-        import { auth, fetchUserData, fetchAppointments, logoutUser } from "./scripts/firebase.js";
-        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+        import { auth, fetchUserData, getUserAppointments, logoutUser, onAuthStateChangedListener } from "./scripts/firebase.js";
 
         document.addEventListener("DOMContentLoaded", () => {
             const emailSpan = document.getElementById("email");
             const usernameSpan = document.getElementById("username");
             const appointmentsList = document.getElementById("appointments-list");
 
-            // Check user authentication state
-            onAuthStateChanged(auth, async (user) => {
+            // מעקב אחר מצב התחברות
+            onAuthStateChangedListener(async (user) => {
                 if (!user) {
                     alert("לא מחובר! מפנה לדף התחברות...");
                     window.location.href = "login.html";
@@ -43,20 +43,20 @@
                 }
 
                 try {
-                    // Load user details
+                    // הצגת פרטי המשתמש
                     emailSpan.textContent = user.email;
                     const userData = await fetchUserData(user.uid);
-                    usernameSpan.textContent = userData.username || "לא נמצא שם משתמש";
+                    usernameSpan.textContent = userData?.username || "לא נמצא שם משתמש";
 
-                    // Load appointments
-                    const appointments = await fetchAppointments(user.uid);
-                    appointmentsList.innerHTML = ""; // Clear list
+                    // הצגת תורים
+                    const appointments = await getUserAppointments(user.uid);
+                    appointmentsList.innerHTML = ""; // נקה רשימה
                     if (appointments.length === 0) {
                         appointmentsList.innerHTML = "<li>אין תורים עתידיים</li>";
                     } else {
                         appointments.forEach((appointment) => {
                             const li = document.createElement("li");
-                            li.textContent = `${appointment.service} - ${appointment.date} - ${appointment.time}`;
+                            li.textContent = ${appointment.service} - `${appointment.date} - ${appointment.time}`;
                             appointmentsList.appendChild(li);
                         });
                     }
@@ -65,7 +65,7 @@
                 }
             });
 
-            // Logout functionality
+            // יציאה מהמערכת
             document.getElementById("logoutButton").addEventListener("click", async () => {
                 try {
                     await logoutUser();
