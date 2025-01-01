@@ -3,16 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>התחברות</title>
-    <!-- Include Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    <title>התחברות1</title>
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
     <h1>התחבר למערכת TimeMaster</h1>
-    <form action="/login" method="POST">
+    <form id="loginForm">
         <label for="email">אימייל:</label>
         <input type="email" id="email" name="email" required>
 
@@ -23,6 +19,27 @@
     </form>
 
     <a href="register.html">אין לך חשבון? הירשם כאן</a>
-    <script src="scripts/firebase.js"></script>
+
+    <!-- הוספת לוגיקה מותאמת -->
+    <script type="module">
+        import { loginUser } from "./scripts/firebase.js";
+
+        // טיפול באירוע התחברות
+        document.getElementById("loginForm").addEventListener("submit", async (event) => {
+            event.preventDefault(); // מניעת רענון הדף
+
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            try {
+                await loginUser(email, password); // קריאה לפונקציית התחברות
+                alert("התחברות מוצלחת! מפנה לעמוד פרופיל...");
+                window.location.href = "userProfile.html"; // מעבר לעמוד הפרופיל
+            } catch (error) {
+                console.error("שגיאה בהתחברות:", error.message);
+                alert("שגיאה בהתחברות: " + error.message);
+            }
+        });
+    </script>
 </body>
 </html>
