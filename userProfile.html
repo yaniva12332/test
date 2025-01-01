@@ -35,6 +35,12 @@
         </form>
     </section>
 
+    <section id="adminSection" style="display: none;">
+        <h2>אזור מנהלים</h2>
+        <p>תכונות מיוחדות למנהלים בלבד</p>
+    </section>
+
+
     <button id="logoutButton">התנתק</button>
 
     <footer>
@@ -44,7 +50,7 @@
     <!-- הוספת לוגיקה מותאמת -->
     <script type="module">
         import { auth, fetchUserData, getUserAppointments, addAppointment, logoutUser, onAuthStateChangedListener,
-             deleteAppointment, updateAppointment } from "./scripts/firebase.js";
+             deleteAppointment, updateAppointment, getUserRole } from "./scripts/firebase.js";
 
         document.addEventListener("DOMContentLoaded", () => {
             const emailSpan = document.getElementById("email");
@@ -60,6 +66,13 @@
                 }
 
                 try {
+                    const role = await getUserRole(user.uid);
+                    if (role === 'admin') {
+                        document.getElementById('adminSection').style.display = 'block'; // הצגת תכונות מנהל
+                    } else {
+                        document.getElementById('adminSection').style.display = 'none'; // הסתרה למשתמשים רגילים
+                    }
+
                     // הצגת פרטי המשתמש
                     emailSpan.textContent = user.email;
                     const userData = await fetchUserData(user.uid);
