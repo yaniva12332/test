@@ -8,10 +8,10 @@
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
-    <h1>הירשם למערכת TimeMaster1</h1>
+    <h1>הירשם למערכת TimeMaster</h1>
     <form id="registerForm">
         <label for="username">שם משתמש:</label>
-        <input type="username" id="username" name="username" required>
+        <input type="text" id="username" name="username" required>
 
         <label for="email">אימייל:</label>
         <input type="email" id="email" name="email" required>
@@ -26,16 +26,21 @@
     <script type="module">
         import { registerUser } from './scripts/firebase.js';  // ייבוא הפונקציה
     
-        document.getElementById('registerForm').addEventListener('submit', function(event) {
+        document.getElementById('registerForm').addEventListener('submit', async (event) => {
             event.preventDefault();
     
             const username = document.getElementById('username').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
     
-            // קריאה לפונקציה הרשמה מתוך firebase.js
-            registerUser(email, password);  
-        });
+            try {
+                // קריאה לפונקציה registerUser עם שליחת כל הנתונים
+                await registerUser(username, email, password);  
+            } catch (error) {
+                console.error("שגיאה בהרשמה:", error.message);
+                alert("שגיאה בהרשמה: " + error.message);
+            }
+        });
     </script>
 </body>
 </html>
