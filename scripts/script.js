@@ -22,26 +22,26 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 
 // רישום משתמש חדש
-export async function registerUser(username, email, password) {
+export async function registerUser(username, email, password, role = 'user') {
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         console.log("משתמש נרשם בהצלחה: ", user);
 
-        // הוספת שם המשתמש למסד הנתונים
+        // הוספת שם המשתמש ותפקיד למסד הנתונים
         await setDoc(doc(db, "users", user.uid), {
             username,
             email,
-            uid: user.uid
+            uid: user.uid,
+            role: "user" // התפקיד המוגדר (ברירת מחדל: user)
         });
 
-        console.log("שם המשתמש נוסף בהצלחה למסד נתונים");
-        window.location.href = "userProfile.html";
+        console.log("שם המשתמש והתפקיד נוספו בהצלחה למסד נתונים");
+        window.location.href = "userProfile.html"; // מעבר לעמוד פרופיל
     } catch (error) {
         console.error("שגיאה בהרשמה: ", error.message);
-    }
+    }
 }
-
 // התחברות למערכת
 export async function loginUser(email, password) {
     try {
@@ -118,6 +118,21 @@ export async function updateAppointment(appointmentId, service, date, time) {
     } catch (error) {
         console.error("שגיאה בעדכון התור:", error.message);
         throw error;
+    }
+}
+//קבלת תפקיד משתמש
+export async function getUserRole(userId) {
+    try {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        if (userDoc.exists()) {
+            return userDoc.data().role; // מחזיר את התפקיד
+        } else {
+            console.log("משתמש לא נמצא");
+            return null;
+        }
+    } catch (error) {
+        console.error("שגיאה בקבלת תפקיד המשתמש: ", error.message);
+        return null;
     }
 }
 
