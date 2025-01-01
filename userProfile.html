@@ -43,7 +43,8 @@
 
     <!-- הוספת לוגיקה מותאמת -->
     <script type="module">
-        import { auth, fetchUserData, getUserAppointments, addAppointment, logoutUser, onAuthStateChangedListener, deleteAppointment } from "./scripts/firebase.js";
+        import { auth, fetchUserData, getUserAppointments, addAppointment, logoutUser, onAuthStateChangedListener,
+             deleteAppointment, updateAppointment } from "./scripts/firebase.js";
 
         document.addEventListener("DOMContentLoaded", () => {
             const emailSpan = document.getElementById("email");
@@ -73,6 +74,12 @@
                         appointments.forEach((appointment) => {
                             const li = document.createElement("li");
                             li.textContent = `${appointment.service} - ${appointment.date} - ${appointment.time}`;
+                            // כפתור עריכה
+                            const editButton = document.createElement("button");
+                            editButton.textContent = "ערוך";
+                            editButton.addEventListener("click", () => {
+                                editAppointment(appointment);
+                            });
                             // כפתור מחיקה
                             const deleteButton = document.createElement("button");
                             deleteButton.textContent = "מחק";
@@ -88,6 +95,7 @@
                                     }
                                 }
                             });
+                            li.appendChild(editButton);
                             li.appendChild(deleteButton);
                             appointmentsList.appendChild(li);
                             
@@ -135,6 +143,50 @@
                     alert("שגיאה בהוספת תור: " + error.message);
                 }
             });
+            // פונקציית עריכת תור
+            function editAppointment(appointment) {
+                const editForm = document.createElement("form");
+                editForm.innerHTML = `
+                    <label for="editService">שירות:</label>
+                    <input type="text" id="editService" value="${appointment.service}" required>
+                    <label for="editDate">תאריך:</label>
+                    <input type="date" id="editDate" value="${appointment.date}" required>
+                    <label for="editTime">שעה:</label>
+                    <input type="time" id="editTime" value="${appointment.time}" required>
+                    <button type="submit">שמור</button>
+                    <button type="button" id="cancelEdit">ביטול</button>
+                `;
+
+                const li = Array.from(appointmentsList.children).find(
+                    (item) =>
+                        item.textContent.includes(appointment.service) &&
+                        item.textContent.includes(appointment.date) &&
+                        item.textContent.includes(appointment.time)
+                );
+
+                li.innerHTML = ""; // נקה את התור הנוכחי
+                li.appendChild(editForm);
+
+                editForm.addEventListener("submit", async (event) => {
+                    event.preventDefault();
+                    const updatedService = document.getElementById("editService").value;
+                    const updatedDate = document.getElementById("editDate").value;
+                    const updatedTime = document.getElementById("editTime").value;
+
+                    try {
+                        await updateAppointment(appointment.id, updatedService, updatedDate, updatedTime);
+                        alert("התור עודכן בהצלחה!");
+                        window.location.reload();
+                    } catch (error) {
+                        console.error("שגיאה בעדכון תור:", error.message);
+                        alert("שגיאה בעדכון התור: " + error.message);
+                    }
+                });
+
+                document.getElementById("cancelEdit").addEventListener("click", () => {
+                    window.location.reload();
+                });
+            }
         });
     </script>
 </body>
