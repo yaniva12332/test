@@ -1,0 +1,225 @@
+/* כללי */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    direction: rtl;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+/* כותרת הדף */
+.admin-header {
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 40px 0;
+}
+
+.admin-header h1 {
+    font-size: 2.5rem;
+    margin: 10px 0;
+}
+
+.admin-header p {
+    font-size: 1.1rem;
+}
+
+/* אזור ניהול המשתמשים */
+.user-management {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.user-management h2 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
+
+.user-management button {
+    background-color: #4CAF50;
+    color: #fff;
+    font-size: 1.2rem;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.user-management button:hover {
+    background-color: #45a049;
+}
+
+.user-list {
+    margin-top: 20px;
+}
+
+.user-item {
+    background-color: #f9f9f9;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.user-item h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.user-item p {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+}
+
+/* אזור ניהול העסקים */
+.business-management {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.business-management h2 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
+
+.business-management button {
+    background-color: #4CAF50;
+    color: #fff;
+    font-size: 1.2rem;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.business-management button:hover {
+    background-color: #45a049;
+}
+
+.business-list {
+    margin-top: 20px;
+}
+
+.business-item {
+    background-color: #f9f9f9;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.business-item h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.business-item p {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+}
+
+/* טפסים */
+.admin-form {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.admin-form h2 {
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.admin-form label {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+}
+
+.admin-form input,
+.admin-form select,
+.admin-form button {
+    padding: 12px;
+    font-size: 1rem;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    width: 100%;
+}
+
+.admin-form button {
+    background-color: #4CAF50;
+    color: #fff;
+    cursor: pointer;
+}
+
+.admin-form button:hover {
+    background-color: #45a049;
+}
+
+/* הודעות הצלחה או שגיאה */
+.success-message,
+.error-message {
+    margin-top: 20px;
+    padding: 20px;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.success-message {
+    background-color: #dff0d8;
+    color: #3c763d;
+    border-radius: 5px;
+}
+
+.error-message {
+    background-color: #f2dede;
+    color: #a94442;
+    border-radius: 5px;
+}
+
+/* מדיה רספונסיבית */
+@media (max-width: 768px) {
+    .admin-header h1 {
+        font-size: 2rem;
+    }
+
+    .user-management,
+    .business-management,
+    .admin-form {
+        padding: 20px;
+    }
+
+    .user-item,
+    .business-item {
+        padding: 10px;
+    }
+
+    .user-item h3,
+    .business-item h3 {
+        font-size: 1.3rem;
+    }
+
+    .user-item p,
+    .business-item p {
+        font-size: 1rem;
+    }
+}

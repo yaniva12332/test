@@ -1,0 +1,162 @@
+/* כללי */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    direction: rtl;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+/* כותרת דף התורים */
+.appointments-header {
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 40px 0;
+}
+
+.appointments-header h1 {
+    font-size: 2.5rem;
+    margin: 10px 0;
+}
+
+.appointments-header p {
+    font-size: 1.1rem;
+}
+
+/* טבלה של התורים */
+.appointments-table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.appointments-table th,
+.appointments-table td {
+    padding: 12px;
+    border: 1px solid #ddd;
+    text-align: center;
+}
+
+.appointments-table th {
+    background-color: #333;
+    color: #fff;
+    font-size: 1.1rem;
+}
+
+.appointments-table td {
+    background-color: #fff;
+    font-size: 1rem;
+}
+
+/* כפתור הזמנת תור חדש */
+.add-appointment-button {
+    display: inline-block;
+    background-color: #4CAF50;
+    color: #fff;
+    font-size: 1.2rem;
+    padding: 15px 30px;
+    text-align: center;
+    border-radius: 5px;
+    margin-top: 20px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.add-appointment-button:hover {
+    background-color: #45a049;
+}
+
+/* צורות של שדות תור */
+.appointment-form {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.appointment-form h2 {
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.appointment-form label {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+}
+
+.appointment-form input,
+.appointment-form select,
+.appointment-form button {
+    padding: 12px;
+    font-size: 1rem;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    width: 100%;
+}
+
+.appointment-form button {
+    background-color: #4CAF50;
+    color: #fff;
+    cursor: pointer;
+}
+
+.appointment-form button:hover {
+    background-color: #45a049;
+}
+
+/* הודעה הצלחה או שגיאה */
+.success-message,
+.error-message {
+    margin-top: 20px;
+    padding: 20px;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.success-message {
+    background-color: #dff0d8;
+    color: #3c763d;
+    border-radius: 5px;
+}
+
+.error-message {
+    background-color: #f2dede;
+    color: #a94442;
+    border-radius: 5px;
+}
+
+/* מדיה רספונסיבית */
+@media (max-width: 768px) {
+    .appointments-header h1 {
+        font-size: 2rem;
+    }
+
+    .appointments-table th,
+    .appointments-table td {
+        font-size: 0.9rem;
+        padding: 8px;
+    }
+
+    .appointment-form {
+        padding: 20px;
+        margin: 20px auto;
+    }
+
+    .appointment-form input,
+    .appointment-form select,
+    .appointment-form button {
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+}

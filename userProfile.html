@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>פרופיל משתמש</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <h1>פרופיל משתמש</h1>
+    <section>
+        <h2>פרטי משתמש</h2>
+        <p><strong>שם משתמש:</strong> <span id="username">טוען...</span></p>
+        <p><strong>אימייל:</strong> <span id="email">טוען...</span></p>
+
+        <h2>תורים עתידיים</h2>
+        <ul id="appointments-list">
+            <li>טוען תורים...</li>
+        </ul>
+    </section>
+
+    <button id="logoutButton">התנתק</button>
+
+    <footer>
+        <p>&copy; 2024 TimeMaster. כל הזכויות שמורות.</p>
+    </footer>
+
+    <script type="module">
+        import { auth, db } from "./scripts/firebase.js";
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const emailSpan = document.getElementById("email");
+            const usernameSpan = document.getElementById("username");
+            const appointmentsList = document.getElementById("appointments-list");
+
+            // בדיקת מצב משתמש
+            onAuthStateChanged(auth, async (user) => {
+                if (!user) {
+                    alert("לא מחובר! מפנה לדף התחברות...");
+                    window.location.href = "login.html";
+                    return;
+                }
+
+                try {
+                    emailSpan.textContent = user.email;
+
+                    // שליפת פרטי המשתמש (השלב הבא יכול להיות הוספת fetchUserData אם רלוונטי)
+
+                    // טען את התורים
+                    appointmentsList.innerHTML = ""; // נקה רשימה
+                    appointmentsList.innerHTML = "<li>אין תורים עתידיים</li>";
+                } catch (error) {
+                    console.error("שגיאה בטעינת הנתונים: ", error.message);
+                }
+            });
+
+            // התנתקות
+            document.getElementById("logoutButton").addEventListener("click", async () => {
+                try {
+                    await auth.signOut();
+                    window.location.href = "login.html";
+                } catch (error) {
+                    console.error("שגיאה ביציאה: ", error.message);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

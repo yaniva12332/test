@@ -1,0 +1,132 @@
+{
+  "users": {
+    "userId": {
+      "type": "string", 
+      "required": true,
+      "description": "מזהה ייחודי למשתמש"
+    },
+    "email": {
+      "type": "string", 
+      "required": true,
+      "description": "כתובת הדוא"ל של המשתמש"
+    },
+    "password": {
+      "type": "string", 
+      "required": true,
+      "description": "סיסמת המשתמש"
+    },
+    "role": {
+      "type": "string", 
+      "required": true,
+      "description": "תפקיד המשתמש במערכת (למשל: אדמין, משתמש)"
+    },
+    "createdAt": {
+      "type": "timestamp", 
+      "required": true,
+      "description": "תאריך יצירת המשתמש"
+    }
+  },
+  "appointments": {
+    "appointmentId": {
+      "type": "string",
+      "required": true,
+      "description": "מזהה ייחודי לתור"
+    },
+    "customerName": {
+      "type": "string", 
+      "required": true,
+      "description": "שם הלקוח"
+    },
+    "service": {
+      "type": "string", 
+      "required": true,
+      "description": "השירות שנבחר"
+    },
+    "appointmentDate": {
+      "type": "date", 
+      "required": true,
+      "description": "תאריך התור"
+    },
+    "appointmentTime": {
+      "type": "string", 
+      "required": true,
+      "description": "שעת התור"
+    },
+    "status": {
+      "type": "string", 
+      "required": true,
+      "description": "סטטוס התור (ממתין, מאושר, בוטל)"
+    }
+  },
+  "businesses": {
+    "businessId": {
+      "type": "string", 
+      "required": true,
+      "description": "מזהה ייחודי לעסק"
+    },
+    "name": {
+      "type": "string", 
+      "required": true,
+      "description": "שם העסק"
+    },
+    "description": {
+      "type": "string", 
+      "required": true,
+      "description": "תיאור העסק"
+    },
+    "owner": {
+      "type": "string", 
+      "required": true,
+      "description": "שם בעל העסק"
+    },
+    "contactInfo": {
+      "type": "object", 
+      "required": true,
+      "description": "פרטי יצירת קשר עם העסק",
+      "properties": {
+        "phone": {
+          "type": "string",
+          "required": true,
+          "description": "מספר טלפון של העסק"
+        },
+        "email": {
+          "type": "string",
+          "required": true,
+          "description": "כתובת דוא"ל של העסק"
+        }
+      }
+    }
+  },
+  "payments": {
+    "paymentId": {
+      "type": "string",
+      "required": true,
+      "description": "מזהה ייחודי לתשלום"
+    },
+    "amount": {
+      "type": "number", 
+      "required": true,
+      "description": "סכום התשלום"
+    },
+    "paymentMethod": {
+      "type": "string", 
+      "required": true,
+      "description": "שיטת התשלום (PayPal, Stripe)"
+    },
+    "status": {
+      "type": "string", 
+      "required": true,
+      "description": "סטטוס התשלום (ממתין, מאושר, בוטל)"
+    },
+    "userId": {
+      "type": "string", 
+      "required": true,
+      "description": "מזהה המשתמש ששילם"
+    },
+    "paymentDate": {
+      "type": "timestamp", 
+      "required": true,
+      "description": "תאריך ביצוע התשלום"
+    }
+  }
+}

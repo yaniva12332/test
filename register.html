@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הרשמה</title>
+    <script type="module" src="scripts/firebase.js"></script>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <h1>הירשם למערכת TimeMaster1</h1>
+    <form id="registerForm">
+        <label for="username">שם משתמש:</label>
+        <input type="username" id="username" name="username" required>
+
+        <label for="email">אימייל:</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="password">סיסמא:</label>
+        <input type="password" id="password" name="password" required>
+
+        <button type="submit">הירשם</button>
+    </form>
+    <a href="login.html">כבר יש לך חשבון? התחבר כאן</a>
+
+    <script type="module">
+        import { registerUser } from './scripts/firebase.js';  // ייבוא הפונקציה
+    
+        document.getElementById('registerForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+    
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+    
+            // קריאה לפונקציה הרשמה מתוך firebase.js
+            registerUser(email, password);  
+        });
+    </script>
+</body>
+</html>

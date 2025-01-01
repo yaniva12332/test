@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תשלום</title>
+    <!-- Include Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    <link rel="stylesheet" href="styles/payment.css">
+</head>
+<body>
+    <h1>בצע תשלום</h1>
+    <form action="/process-payment" method="POST">
+        <label for="amount">סכום לתשלום:</label>
+        <input type="number" id="amount" name="amount" value="100" required>
+        <button type="submit">בצע תשלום</button>
+    </form>
+    <footer>
+        <p>&copy; 2024 TimeMaster. כל הזכויות שמורות.</p>
+    </footer>
+    <script src="scripts/payment.js"></script>
+    <script src="scripts/firebase.js"></script>
+</body>
+</html>
