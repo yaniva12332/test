@@ -26,7 +26,7 @@
     </footer>
 
     <script type="module">
-        import { auth, db } from "./scripts/firebase.js";
+        import { auth, fetchUserData, fetchAppointments, logoutUser } from "./scripts/firebase.js";
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -34,7 +34,7 @@
             const usernameSpan = document.getElementById("username");
             const appointmentsList = document.getElementById("appointments-list");
 
-            // בדיקת מצב משתמש
+            // Check user authentication state
             onAuthStateChanged(auth, async (user) => {
                 if (!user) {
                     alert("לא מחובר! מפנה לדף התחברות...");
@@ -43,22 +43,32 @@
                 }
 
                 try {
+                    // Load user details
                     emailSpan.textContent = user.email;
+                    const userData = await fetchUserData(user.uid);
+                    usernameSpan.textContent = userData.username || "לא נמצא שם משתמש";
 
-                    // שליפת פרטי המשתמש (השלב הבא יכול להיות הוספת fetchUserData אם רלוונטי)
-
-                    // טען את התורים
-                    appointmentsList.innerHTML = ""; // נקה רשימה
-                    appointmentsList.innerHTML = "<li>אין תורים עתידיים</li>";
+                    // Load appointments
+                    const appointments = await fetchAppointments(user.uid);
+                    appointmentsList.innerHTML = ""; // Clear list
+                    if (appointments.length === 0) {
+                        appointmentsList.innerHTML = "<li>אין תורים עתידיים</li>";
+                    } else {
+                        appointments.forEach((appointment) => {
+                            const li = document.createElement("li");
+                            li.textContent = ${appointment.service} - ${appointment.date} - ${appointment.time};
+                            appointmentsList.appendChild(li);
+                        });
+                    }
                 } catch (error) {
                     console.error("שגיאה בטעינת הנתונים: ", error.message);
                 }
             });
 
-            // התנתקות
+            // Logout functionality
             document.getElementById("logoutButton").addEventListener("click", async () => {
                 try {
-                    await auth.signOut();
+                    await logoutUser();
                     window.location.href = "login.html";
                 } catch (error) {
                     console.error("שגיאה ביציאה: ", error.message);
