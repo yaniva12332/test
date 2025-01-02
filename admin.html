@@ -21,26 +21,14 @@
         <form id="addBusinessForm">
             <label for="businessEmail">אימייל משתמש:</label>
             <input type="email" id="businessEmail" required>
-            <button type="submit">עדכן לבעל עסק</button>
+            <button id="addBusinessButton" type="submit">עדכן לבעל עסק</button>
         </form>
     </section>
 
     <section>
         <h2>ניהול עסקים</h2>
         <button id="viewBusinesses">הצג עסקים</button>
-        <button id="addBusinessButton">הוסף עסק</button>
         <ul id="businessList"></ul>
-
-        <form id="addBusinessForm" style="display: none;">
-            <h3>הוסף עסק חדש</h3>
-            <label for="businessName">שם העסק:</label>
-            <input type="text" id="businessName" required>
-        
-            <label for="ownerEmail">אימייל בעל העסק:</label>
-            <input type="email" id="ownerEmail" required>
-
-            <button type="submit">שמור</button>
-        </form>
     </section>
     
     <button id="logoutButton">התנתק</button>
@@ -50,7 +38,7 @@
     </footer>
 
     <script type="module">
-        import { auth, getUserRole, logoutUser } from "./scripts/firebase.js";
+        import { auth, getUserRole, logoutUser,addBusiness, getAllBusinesses} from "./scripts/firebase.js";
 
         // מעקב אחרי מצב התחברות
         document.addEventListener("DOMContentLoaded", async () => {
@@ -76,7 +64,8 @@
                     ocation.href = "login.html";
                 }
             });
-            
+
+
         // יציאה מהמערכת
         document.getElementById("logoutButton").addEventListener("click", async () => {
                 try {
@@ -87,6 +76,7 @@
                 }
             });
         });
+       
     </script>
 </body>
 </html>
