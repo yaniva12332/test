@@ -47,11 +47,24 @@ export async function loginUser(email, password) {
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
-        console.log("המשתמש התחבר בהצלחה: ", user);
-        window.location.href = "userProfile.html";
+        console.log("המשתמש התחבר בהצלחה:", user);
+
+        // קבלת התפקיד של המשתמש
+        const userDoc = await fetchUserData(user.uid);
+        const role = userDoc?.role || "user";
+
+        console.log("תפקיד המשתמש:", role);
+
+        // הפניה על בסיס התפקיד
+        if (role === "superAdmin") {
+            window.location.href = "admin.html"; // הפניה לדף הניהול
+        } else {
+            window.location.href = "userProfile.html"; // הפניה לדף משתמש רגיל
+        }
     } catch (error) {
-        console.error("שגיאה בהתחברות: ", error.message);
-    }
+        console.error("שגיאה בהתחברות:", error.message);
+        alert("שגיאה בהתחברות: " + error.message);
+    }
 }
 
 // יציאה מהמערכת
@@ -135,6 +148,56 @@ export async function getUserRole(userId) {
         return null;
     }
 }
+
+//קבלת כל המשתמשים
+export async function getAllUsers() {
+    try {
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const users = [];
+        usersSnapshot.forEach((doc) => {
+            users.push({ id: doc.id, ...doc.data() });
+        });
+        return users;
+    } catch (error) {
+        console.error("שגיאה בקבלת רשימת המשתמשים:", error.message);
+        throw error;
+    }
+}
+
+// הוספת עסק
+export async function addBusiness(ownerId, name, services = [], timeSlots = []) {
+    try {
+        const docRef = await addDoc(collection(db, "businesses"), {
+            ownerId,
+            name,
+            services,
+            timeSlots
+        });
+        console.log("עסק נוסף בהצלחה:", docRef.id);
+        return docRef.id;
+    } catch (error) {
+        console.error("שגיאה בהוספת העסק:", error.message);
+        throw error;
+    }
+}
+
+// קבלת כל העסקים
+export async function getAllBusinesses() {
+    try {
+        const businessesSnapshot = await getDocs(collection(db, "businesses"));
+        const businesses = [];
+        businessesSnapshot.forEach((doc) => {
+            businesses.push({ id: doc.id, ...doc.data() });
+        });
+        return businesses;
+    } catch (error) {
+        console.error("שגיאה בקבלת רשימת העסקים:", error.message);
+        throw error;
+    }
+}
+
+
+
 
 // קבלת פרטי משתמש
 export async function fetchUserData(userId) {
