@@ -2,7 +2,8 @@ import { auth, getAllUsers, getAllBusinesses, addBusiness, getUserRole } from ".
 
 document.addEventListener("DOMContentLoaded", () => {
     const viewUsersButton = document.getElementById("viewUsers");
-    const addBusinessButton = document.getElementById("addBusiness");
+    const viewBusinessesButton = document.getElementById("viewBusinesses");
+    const addBusinessForm = document.getElementById("addBusinessForm");
     const userList = document.getElementById("userList");
     const businessList = document.getElementById("businessList");
 
@@ -33,11 +34,47 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // הוספת עסק
-    addBusinessButton.addEventListener("click", async () => {
-        const name = prompt("הכנס שם עסק:");
-        if (!name) return;
-        await addBusiness(auth.currentUser.uid, name);
-        alert("עסק נוסף בהצלחה!");
-        location.reload();
+    addBusinessForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const businessEmail = document.getElementById("businessEmail").value;
+        const businessName = prompt("הכנס את שם העסק:");
+
+        if (!businessName) {
+            alert("שם העסק הוא חובה.");
+            return;
+        }
+
+        try {
+            const result = await addBusiness(businessEmail, businessName);
+            if (result) {
+                alert("העסק נוסף בהצלחה!");
+            } else {
+                alert("לא נמצא משתמש עם המייל שסופק.");
+            }
+            addBusinessForm.reset();
+        } catch (error) {
+            console.error("שגיאה בהוספת העסק:", error.message);
+            alert("שגיאה בהוספת העסק: " + error.message);
+        }
+    });
+    // הצגת עסקים
+    viewBusinessesButton.addEventListener("click", async () => {
+        try {
+            const businesses = await getAllBusinesses();
+            businessList.innerHTML = ""; // מנקה את הרשימה הקיימת
+            if (businesses.length === 0) {
+                businessList.innerHTML = "<li>אין עסקים להצגה</li>";
+                return;
+            }
+
+            businesses.forEach((business) => {
+                const li = document.createElement("li");
+                li.textContent = `${business.name} (בעלים: ${business.ownerId})`;
+                businessList.appendChild(li);
+            });
+        } catch (error) {
+            console.error("שגיאה בהצגת העסקים:", error.message);
+            alert("שגיאה בהצגת העסקים: " + error.message);
+        }
     });
 });
