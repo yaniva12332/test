@@ -164,20 +164,38 @@ export async function getAllUsers() {
     }
 }
 
-// הוספת עסק
-export async function addBusiness(ownerId, name, services = [], timeSlots = []) {
+// הוספת עסק למסד הנתונים
+export async function addBusiness(ownerEmail, businessName) {
     try {
-        const docRef = await addDoc(collection(db, "businesses"), {
-            ownerId,
-            name,
-            services,
-            timeSlots
-        });
-        console.log("עסק נוסף בהצלחה:", docRef.id);
-        return docRef.id;
+        // חיפוש המשתמש לפי אימייל
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", ownerEmail));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            const userDoc = querySnapshot.docs[0];
+            const ownerId = userDoc.id;
+
+            // הוספת עסק למסד הנתונים
+            const docRef = await addDoc(collection(db, "businesses"), {
+                ownerId,
+                name: businessName,
+                services: [],
+                timeSlots: [],
+            });
+
+            // עדכון תפקיד המשתמש ל-admin
+            await updateDoc(doc(db, "users", ownerId), { role: "admin" });
+
+            console.log(`העסק ${businessName} נוסף בהצלחה והמשתמש עודכן ל-admin.`);
+            return true;
+        } else {
+            console.error(`לא נמצא משתמש עם המייל: ${ownerEmail}`);
+            return false;
+        }
     } catch (error) {
-        console.error("שגיאה בהוספת העסק:", error.message);
-        throw error;
+        console.error("שגיאה בהוספת עסק:", error.message);
+        throw error;
     }
 }
 
@@ -196,7 +214,31 @@ export async function getAllBusinesses() {
     }
 }
 
+// עדכון תפקיד המשתמש
+export async function updateUserRole(email, newRole) {
+    try {
+        // חיפוש המשתמש לפי המייל
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", email));
+        const querySnapshot = await getDocs(q);
 
+        if (!querySnapshot.empty) {
+            // עדכון התפקיד של המשתמש הראשון שנמצא
+            const userDoc = querySnapshot.docs[0];
+            const userRef = doc(db, "users", userDoc.id);
+
+            await updateDoc(userRef, { role: newRole });
+            console.log(`התפקיד של המשתמש ${email} עודכן ל-${newRole}`);
+            return true;
+        } else {
+            console.log(`משתמש עם המייל ${email} לא נמצא`);
+            return false;
+        }
+    } catch (error) {
+        console.error("שגיאה בעדכון תפקיד המשתמש:", error.message);
+        throw error;
+    }
+}
 
 
 // קבלת פרטי משתמש
