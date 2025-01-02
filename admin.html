@@ -1,67 +1,92 @@
-import { auth, getAllUsers, getAllBusinesses, addBusiness, getUserRole } from "./firebase.js";
+<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול TimeMaster</title>
+    <script src="scripts/admin.js" type="module" defer></script>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <h1>ניהול TimeMaster</h1>
 
-document.addEventListener("DOMContentLoaded", () => {
-    const viewUsersButton = document.getElementById("viewUsers");
-    const addBusinessButton = document.getElementById("addBusiness");
-    const userList = document.getElementById("userList");
-    const businessList = document.getElementById("businessList");
+    <section>
+        <h2>ניהול משתמשים</h2>
+        <button id="viewUsers">הצג משתמשים</button>
+        <ul id="userList"></ul>
+    </section>
+    
+    <section>
+        <h2>הפוך משתמש לבעל עסק</h2>
+        <form id="addBusinessForm">
+            <label for="businessEmail">אימייל משתמש:</label>
+            <input type="email" id="businessEmail" required>
+            <button type="submit">עדכן לבעל עסק</button>
+        </form>
+    </section>
 
-    auth.onAuthStateChanged(async (user) => {
-        if (!user) {
-            alert("עליך להתחבר!");
-            window.location.href = "login.html";
-            return;
-        }
+    <section>
+        <h2>ניהול עסקים</h2>
+        <button id="viewBusinesses">הצג עסקים</button>
+        <button id="addBusinessButton">הוסף עסק</button>
+        <ul id="businessList"></ul>
 
-        const role = await getUserRole(user.uid);
-        if (role !== "superAdmin") {
-            alert("אין לך גישה לדף זה!");
-            window.location.href = "userProfile.html";
-            return;
-        }
-    });
+        <form id="addBusinessForm" style="display: none;">
+            <h3>הוסף עסק חדש</h3>
+            <label for="businessName">שם העסק:</label>
+            <input type="text" id="businessName" required>
+        
+            <label for="ownerEmail">אימייל בעל העסק:</label>
+            <input type="email" id="ownerEmail" required>
 
-    // הצגת משתמשים
-    viewUsersButton.addEventListener("click", async () => {
-        const users = await getAllUsers();
-        userList.innerHTML = "";
-        users.forEach((user) => {
-            const li = document.createElement("li");
-            li.textContent = `${user.username} (${user.email}) - ${user.role}`;
-            userList.appendChild(li);
-        });
-    });
+            <button type="submit">שמור</button>
+        </form>
+    </section>
+    
+    <button id="logoutButton">התנתק</button>
 
-    // הוספת עסק
-    addBusinessButton.addEventListener("click", async () => {
-        const name = prompt("הכנס שם עסק:");
-        if (!name) return;
-        await addBusiness(auth.currentUser.uid, name);
-        alert("עסק נוסף בהצלחה!");
-        location.reload();
-    });
+    <footer>
+        <p>&copy; 2024 TimeMaster. כל הזכויות שמורות.</p>
+    </footer>
 
-    // טופס הוספת בעל עסק
-    const addBusinessForm = document.getElementById("addBusinessForm");
+    <script type="module">
+        import { auth, getUserRole, logoutUser } from "./scripts/firebase.js";
 
-    addBusinessForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-
-        const businessEmail = document.getElementById("businessEmail").value;
-
-        try {
-            // עדכון תפקיד המשתמש
-            const result = await updateUserRole(businessEmail, "admin");
-            if (result) {
-                alert("המייל עודכן בהצלחה לבעל עסק!");
-            } else {
-                alert("כתובת המייל לא נמצאה במערכת.");
-            }
-
-            addBusinessForm.reset();
-        } catch (error) {
-            console.error("שגיאה בעדכון תפקיד המשתמש:", error.message);
-            alert("שגיאה בעדכון תפקיד המשתמש: " + error.message);
-        }
-    });
-});
+        // מעקב אחרי מצב התחברות
+        document.addEventListener("DOMContentLoaded", async () => {
+            auth.onAuthStateChanged(async (user) => {
+                if (!user) {
+                    // אם המשתמש לא מחובר
+                    alert("אין לך הרשאות גישה לדף זה. מפנה אותך להתחברות...");
+                    window.location.href = "login.html";
+                    return;
+                }
+    
+                try {
+                    const role = await getUserRole(user.uid);
+                    if (role !== "superAdmin") {
+                        // אם התפקיד אינו סופר-אדמין
+                        alert("אין לך הרשאות גישה לדף זה.");
+                        window.location.href = "login.html";
+                    }
+                } catch (error) {
+                    console.error("שגיאה בבדיקת תפקיד המשתמש:", error.message);
+                    alert("שגיאה במערכת. אנא נסה שוב מאוחר יותר.");
+                    window.l
+                    ocation.href = "login.html";
+                }
+            });
+            
+        // יציאה מהמערכת
+        document.getElementById("logoutButton").addEventListener("click", async () => {
+                try {
+                    await logoutUser();
+                    window.location.href = "login.html";
+                } catch (error) {
+                    console.error("שגיאה ביציאה: ", error.message);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
