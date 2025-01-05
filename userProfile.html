@@ -35,11 +35,51 @@
         </form>
     </section>
 
-    <section id="adminSection" style="display: none;">
-        <h2>אזור מנהלים</h2>
-        <p>תכונות מיוחדות למנהלים בלבד</p>
-    </section>
 
+    <h1 id="adminSection" style="display: none;">אזור מנהלים</h1>
+<section id="addServiceSection" style="display: none;">
+    <h2>הוספת שירותים</h2>
+    <form id="addServiceForm">
+        <label for="serviceName">שם השירות:</label>
+        <input type="text" id="serviceName" required>
+        <button type="submit">הוסף שירות</button>
+    </form>
+</section>
+
+<section id="viewServicesSection" style="display: none;">
+    <h2>שירותים קיימים</h2>
+    <ul id="services-list">
+        <li>טוען שירותים...</li>
+    </ul>
+</section>
+
+    <section id="timeSlotSection" style="display: none;">
+        <h2>הוספת חלונות זמן</h2>
+        <form id="timeSlotForm" novalidate>
+            <label for="service">שירות:</label>
+            <input type="text" id="service2" placeholder="הכנס שם שירות"  required>
+
+            <label for="employee">עובד:</label>
+            <input type="text" id="employee" placeholder="הכנס שם עובד" required>
+
+            <label for="date">תאריך:</label>
+            <input type="date" id="date2" min="" required>
+
+            <label for="startTime">שעת התחלה:</label>
+            <input type="time" id="startTime" required>
+
+            <label for="endTime">שעת סיום:</label>
+            <input type="time" id="endTime" required>
+
+            <label for="slotDuration">משך זמן (בדקות):</label>
+            <input type="number" id="slotDuration" required><br>
+
+            <label for="price">מחיר:</label>
+            <input type="number" id="price" required>
+
+            <button type="submit">הוסף חלונות זמן</button>
+        </form>
+    </section>
 
     <button id="logoutButton">התנתק</button>
 
@@ -50,13 +90,42 @@
     <!-- הוספת לוגיקה מותאמת -->
     <script type="module">
         import { auth, fetchUserData, getUserAppointments, addAppointment, logoutUser, onAuthStateChangedListener,
-             deleteAppointment, updateAppointment, getUserRole } from "./scripts/firebase.js";
+             deleteAppointment, updateAppointment, getUserRole, getBusinessIdByOwner, getBusinessServices,
+             getEmployeesForService, addService, addOrSelectService, addOrSelectEmployee, addTimeSlots } from "./scripts/firebase.js";
 
         document.addEventListener("DOMContentLoaded", () => {
             const emailSpan = document.getElementById("email");
             const usernameSpan = document.getElementById("username");
             const appointmentsList = document.getElementById("appointments-list");
+            const timeSlotSection = document.getElementById("timeSlotSection");
+            const timeSlotForm = document.getElementById("timeSlotForm");
+            const addServiceForm = document.getElementById("addServiceForm");
+            const serviceName = document.getElementById("service2").value.trim();
+            const employeeName = document.getElementById("employee").value.trim();
+            const dateInput = document.getElementById("date2");
+            const today = new Date().toISOString().split("T")[0]; // תאריך בפורמט YYYY-MM-DD
+            dateInput.setAttribute("min", today);
+            const startTime = document.getElementById("startTime").value;
+            const endTime = document.getElementById("endTime").value;
+            const slotDuration = parseInt(document.getElementById("slotDuration").value, 10);
+            const price = parseFloat(document.getElementById("price").value);
+            document.getElementById("startTime").addEventListener("change", validateTime);
+            document.getElementById("date2").addEventListener("change", validateTime);
 
+        function validateTime() {
+            const dateInput = document.getElementById("date2").value; // תאריך נבחר
+            const startTimeInput = document.getElementById("startTime").value; // שעת התחלה נבחרת
+            const currentDate = new Date(); // תאריך ושעה נוכחיים
+
+            if (dateInput && startTimeInput) {
+                const selectedDateTime = new Date(`${dateInput}T${startTimeInput}`); // תאריך ושעה משולבים
+        
+                if (selectedDateTime < currentDate) {
+                    alert("לא ניתן לבחור שעה מהעבר!");
+                    document.getElementById("startTime").value = ""; // מחיקת שעת התחלה לא חוקית
+                }
+            }
+        }                   
             // מעקב אחר מצב התחברות
             onAuthStateChangedListener(async (user) => {
                 if (!user) {
@@ -69,8 +138,54 @@
                     const role = await getUserRole(user.uid);
                     if (role === 'admin') {
                         document.getElementById('adminSection').style.display = 'block'; // הצגת תכונות מנהל
+                        addServiceSection.style.display = "block"; // הצג את טופס הוספת השירותים
+                        timeSlotSection.style.display = 'block';
+                        document.getElementById("viewServicesSection").style.display = "block"; // הצגת סקשן השירותים
+
+                                                // שליפת פרטי העסק
+                                                const businessId = await getBusinessIdByOwner(user.uid);
+                                                
+                                                
+                   // טיפול בטופס הוספת שירותים
+                   timeSlotForm.addEventListener("submit", async (event) => {
+                   event.preventDefault();
+
+
+                   const dateInput = document.getElementById("date2").value; // תאריך נבחר
+                   const startTimeInput = document.getElementById("startTime").value; // שעת התחלה
+                   const endTimeInput = document.getElementById("endTime").value; // שעת סיום
+                   const currentDate = new Date(); // תאריך ושעה נוכחיים
+
+                   if (dateInput && startTimeInput) {
+                       const selectedStartDateTime = new Date(`${dateInput}T${startTimeInput}`); // תאריך ושעת התחלה
+                       const selectedEndDateTime = new Date(`${dateInput}T${endTimeInput}`); // תאריך ושעת סיום
+
+                       if (selectedStartDateTime < currentDate) {
+                           alert("לא ניתן לבחור שעה מהעבר!");
+                           return;
+                       }
+
+                       if (selectedEndDateTime <= selectedStartDateTime) {
+                           alert("שעת הסיום חייבת להיות אחרי שעת ההתחלה!");
+                           return;
+                       }
+                   }
+
+                   try {
+                       // המשך הקוד שלך להוספת חלונות זמן
+                       alert("חלונות הזמן נוספו בהצלחה.");
+                   } catch (error) {
+                       console.error("שגיאה:", error.message);
+                       alert("שגיאה: " + error.message);
+                   }
+               });
+
+
+
+  
                     } else {
                         document.getElementById('adminSection').style.display = 'none'; // הסתרה למשתמשים רגילים
+                        timeSlotSection.style.display = 'none';
                     }
 
                     // הצגת פרטי המשתמש
