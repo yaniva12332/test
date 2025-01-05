@@ -1,6 +1,7 @@
-import { auth, fetchUserData, getUserAppointments, addAppointment, logoutUser, onAuthStateChangedListener,
-    deleteAppointment, fetchTimeSlotsForBusiness,  deleteTimeSlot, fetchEmployeesForBusiness
+import { auth, fetchUserData, db ,getUserAppointments, addAppointment, logoutUser, onAuthStateChangedListener,
+    deleteAppointment, fetchTimeSlotsForBusiness,  deleteTimeSlot, fetchEmployeesForBusiness, getBusinessDetailsByOwner
     , getUserRole, getBusinessIdByOwner, addService, addOrSelectEmployee, addTimeSlots } from "./firebase.js";
+    import { getDocs, collection, deleteDoc, doc, updateDoc, getFirestore, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     const emailSpan = document.getElementById("email");
@@ -13,6 +14,83 @@ document.addEventListener("DOMContentLoaded", () => {
     const addEmployeeForm = document.getElementById("addEmployeeForm");
     const addTimeSlotForm = document.getElementById("addTimeSlotForm");
 
+    const businessNameElement = document.getElementById("businessName");
+
+    onAuthStateChangedListener(async (user) => {
+        if (!user) {
+            alert("משתמש לא מחובר. מפנה לדף התחברות...");
+            window.location.href = "login.html";
+            return;
+        }
+
+        try {
+            // שליפת פרטי העסק לפי מזהה המשתמש
+            const businessDetails = await getBusinessDetailsByOwner(user.uid);
+
+            if (!businessDetails || !businessDetails.name) {
+                businessNameElement.textContent = "שם העסק לא נמצא.";
+            } else {
+                businessNameElement.textContent = businessDetails.name;
+            }
+        } catch (error) {
+            console.error("שגיאה בשליפת פרטי העסק:", error.message);
+            businessNameElement.textContent = "שגיאה בטעינת פרטי העסק.";
+        }
+    });
+async function loadEmployees() {
+    console.log("Loading employees...");
+
+    // ודא שהמשתמש מחובר
+    if (!auth.currentUser) {
+        console.error("User is not logged in.");
+        return;
+    }
+
+    try {
+        const businessId = await getBusinessIdByOwner(auth.currentUser.uid);
+        console.log("Business ID:", businessId);
+
+        if (!businessId) {
+            console.error("No business ID found.");
+            document.getElementById("employeesList").innerHTML = "<li>לא נמצא מזהה עסק.</li>";
+            return;
+        }
+
+        // שליפת רשימת העובדים
+        const employeesSnapshot = await getDocs(collection(db, `businesses/${businessId}/employees`));
+        console.log("Employees Snapshot:", employeesSnapshot);
+
+        if (employeesSnapshot.empty) {
+            console.log("No employees found.");
+            document.getElementById("employeesList").innerHTML = "<li>לא נמצאו עובדים.</li>";
+            return;
+        }
+
+        // תצוגת העובדים
+        const employeesList = document.getElementById("employeesList");
+        employeesList.innerHTML = ""; // ניקוי הרשימה הקיימת
+
+        employeesSnapshot.forEach((doc) => {
+            const employeeData = doc.data();
+            console.log("Employee Data:", employeeData);
+
+            const listItem = document.createElement("li");
+            listItem.textContent = `שם העובד: ${employeeData.name}`;
+            employeesList.appendChild(listItem);
+        });
+    } catch (error) {
+        console.error("Error loading employees:", error.message);
+        document.getElementById("employeesList").innerHTML = `<li>שגיאה בטעינת העובדים: ${error.message}</li>`;
+    }
+}
+
+
+// קריאה לפונקציה בעת טעינת הדף
+window.onload = async () => {
+    console.log("Window loaded!");
+    await loadEmployees();
+};
+
     onAuthStateChangedListener(async (user) => {
         if (!user) {
             alert("לא מחובר! מפנה לדף התחברות...");
@@ -24,6 +102,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const role = await getUserRole(user.uid);
             if (role === "admin") {
                 adminSection.style.display = "block"; // הצגת אזור מנהלים
+                loadEmployees();
+                await fetchAndDisplayTimeSlots();
             }
 
             emailSpan.textContent = user.email;
@@ -191,24 +271,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }    
     });
 
-    // הוספת שירות חדש
-    addServiceForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const serviceName = document.getElementById("serviceName").value.trim();
-
-        if (!serviceName) {
-            alert("נא להזין שם שירות");
-            return;
-        }
-
-        try {
-            const businessId = await getBusinessIdByOwner(auth.currentUser.uid);
-            await addService(businessId, serviceName);
-            alert("השירות נוסף בהצלחה!");
-        } catch (error) {
-            console.error("שגיאה בהוספת שירות:", error);
-        }
-    });
 
     // הוספת עובד חדש
     addEmployeeForm.addEventListener("submit", async (event) => {
@@ -355,3 +417,125 @@ function generateTimeSlotsWithDefaults(startTime, endTime, price, serviceName, d
         await loadTimeSlots();
     });
 });
+async function fetchAllTimeSlots(businessId) {
+    const allSlots = [];
+    try {
+        const employeesSnapshot = await getDocs(
+            collection(db, `businesses/${businessId}/employees`)
+        );
+
+        for (const employeeDoc of employeesSnapshot.docs) {
+            const employeeId = employeeDoc.id;
+            const slotsSnapshot = await getDocs(
+                collection(db, `businesses/${businessId}/employees/${employeeId}/timeSlots`)
+            );
+
+            slotsSnapshot.forEach((slotDoc) => {
+                allSlots.push({
+                    id: slotDoc.id,
+                    employeeId,
+                    employeeName: employeeDoc.data().name, // שם העובד
+                    ...slotDoc.data(),
+                });
+            });
+        }
+    } catch (error) {
+        console.error("שגיאה בשליפת חלונות הזמן:", error.message);
+    }
+    return allSlots;
+}
+
+async function fetchAndDisplayTimeSlots() {
+    const tableBody = document.getElementById("timeSlotsTableBody");
+    tableBody.innerHTML = ""; // נקה את התוכן הקיים
+
+    try {
+        const businessId = await getBusinessIdByOwner(auth.currentUser.uid); // קבלת מזהה העסק
+        const timeSlots = await fetchTimeSlotsForBusiness(businessId); // שליפת חלונות הזמן
+
+        if (timeSlots.length === 0) {
+            tableBody.innerHTML = "<tr><td colspan='7'>לא נמצאו חלונות זמן.</td></tr>";
+            return;
+        }
+
+        for (const slot of timeSlots) {
+            const employeeRef = doc(db, `businesses/${businessId}/employees/${slot.employeeId}`);
+            const employeeDoc = await getDoc(employeeRef);
+            const employeeName = employeeDoc.exists() ? employeeDoc.data().name : "לא ידוע";
+
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+                <td>${slot.date}</td>
+                <td>${slot.time}</td>
+                <td>${employeeName}</td>
+                <td>${slot.service || "לא ידוע"}</td>
+                <td>${slot.price} ₪</td>
+                <td>${slot.duration} דקות</td>
+                <td>${slot.isBooked ? "תפוס" : "פנוי"}</td>
+                <td>
+                    <button onclick="editTimeSlotEntry('${businessId}', '${slot.employeeId}', '${slot.id}', { service: 'שירות חדש' })">ערוך</button>
+                    <button onclick="deleteTimeSlotEntry('${businessId}', '${slot.employeeId}', '${slot.id}')">מחק</button>
+                </td>
+            `;
+
+            tableBody.appendChild(row);
+        }
+    } catch (error) {
+        console.error("שגיאה בטעינת חלונות הזמן:", error.message);
+        tableBody.innerHTML = "<tr><td colspan='7'>שגיאה בטעינת חלונות הזמן.</td></tr>";
+    }
+}
+
+function editTimeSlotEntry(businessId, slot) {
+    const newTime = prompt("הזן זמן חדש:", slot.time);
+    const newPrice = prompt("הזן מחיר חדש:", slot.price);
+
+    if (newTime && newPrice) {
+        const slotRef = doc(
+            db,
+            `businesses/${businessId}/employees/${slot.employeeId}/timeSlots/${slot.id}`
+        );
+
+        updateDoc(slotRef, {
+            time: newTime,
+            price: parseFloat(newPrice),
+        })
+            .then(() => {
+                alert("חלון הזמן עודכן בהצלחה!");
+                fetchAndDisplayTimeSlots();
+            })
+            .catch((error) => {
+                console.error("שגיאה בעדכון חלון הזמן:", error.message);
+            });
+    }
+}
+
+function deleteTimeSlotEntry(businessId, employeeId, slotId) {
+    if (confirm("האם אתה בטוח שברצונך למחוק את חלון הזמן?")) {
+        const slotRef = doc(
+            db,
+            `businesses/${businessId}/employees/${employeeId}/timeSlots/${slotId}`
+        );
+
+        deleteDoc(slotRef)
+            .then(() => {
+                alert("חלון הזמן נמחק בהצלחה!");
+                fetchAndDisplayTimeSlots();
+            })
+            .catch((error) => {
+                console.error("שגיאה במחיקת חלון הזמן:", error.message);
+            });
+    }
+}
+
+document
+    .getElementById("applyFiltersButton")
+    .addEventListener("click", fetchAndDisplayTimeSlots);
+
+// קריאה ראשונית להצגת חלונות הזמן
+document.addEventListener("DOMContentLoaded", fetchAndDisplayTimeSlots);
+
+
+window.deleteTimeSlotEntry = deleteTimeSlotEntry;
+window.editTimeSlotEntry = editTimeSlotEntry;
