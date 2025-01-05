@@ -23,6 +23,25 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
+export async function getBusinessDetailsByOwner(ownerId) {
+    try {
+        const businessesCollection = collection(db, "businesses");
+        const q = query(businessesCollection, where("ownerId", "==", ownerId));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            const businessDoc = querySnapshot.docs[0];
+            return { id: businessDoc.id, ...businessDoc.data() };
+        } else {
+            console.error("לא נמצא עסק עבור הבעלים.");
+            return null;
+        }
+    } catch (error) {
+        console.error("שגיאה בשליפת פרטי העסק:", error.message);
+        throw error;
+    }
+}
+
 export async function fetchEmployeesForBusiness(businessId) {
     try {
         // גישה לאוסף העובדים של העסק
