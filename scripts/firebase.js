@@ -1,3 +1,4 @@
+
 // ייבוא הפונקציות הנדרשות מ-SDK של Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
@@ -22,7 +23,80 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
+export async function fetchEmployeesForBusiness(businessId) {
+    try {
+        // גישה לאוסף העובדים של העסק
+        const employeesRef = collection(db, `businesses/${businessId}/employees`);
+        const querySnapshot = await getDocs(employeesRef);
 
+        if (querySnapshot.empty) {
+            console.log("לא נמצאו עובדים לעסק זה.");
+            return [];
+        }
+
+        // יצירת מערך של עובדים
+        const employees = [];
+        querySnapshot.forEach((doc) => {
+            employees.push({
+                id: doc.id, // מזהה העובד
+                ...doc.data(), // נתונים נוספים על העובד
+            });
+        });
+
+        console.log("רשימת העובדים שנשלפו:", employees);
+        return employees;
+    } catch (error) {
+        console.error("שגיאה בשליפת רשימת העובדים:", error.message);
+        return [];
+    }
+}
+
+
+// שליפת תורים עבור עסק
+export async function fetchTimeSlotsForBusiness(businessId) {
+    try {
+        console.log("שליפת חלונות עבור עסק:", businessId);
+        const employeesSnapshot = await getDocs(collection(db, `businesses/${businessId}/employees`));
+        if (employeesSnapshot.empty) {
+            console.error("לא נמצאו עובדים לעסק זה.");
+            return [];
+        }
+
+        const timeSlots = [];
+        for (const employeeDoc of employeesSnapshot.docs) {
+            const employeeId = employeeDoc.id;
+            console.log("מזהה עובד:", employeeId);
+
+            const slotsSnapshot = await getDocs(collection(db, `businesses/${businessId}/employees/${employeeId}/timeSlots`));
+            if (slotsSnapshot.empty) {
+                console.log(`לא נמצאו חלונות זמינים לעובד ${employeeId}`);
+                continue;
+            }
+
+            slotsSnapshot.forEach((slotDoc) => {
+                const slotData = slotDoc.data();
+                console.log("חלון שנמצא:", slotData);
+                timeSlots.push({ id: slotDoc.id, employeeId, ...slotData });
+            });
+        }
+
+        console.log("חלונות שנשלפו:", timeSlots);
+        return timeSlots;
+    } catch (error) {
+        console.error("שגיאה בשליפת חלונות הזמן:", error.message);
+        return [];
+    }
+}
+
+export async function deleteTimeSlot(businessId, employeeId, slotId) {
+    try {
+        const slotRef = doc(db, `businesses/${businessId}/employees/${employeeId}/timeSlots/${slotId}`);
+        await deleteDoc(slotRef);
+        console.log(`חלון הזמן ${slotId} נמחק בהצלחה.`);
+    } catch (error) {
+        console.error("שגיאה במחיקת חלון הזמן:", error.message);
+    }
+}
 
 // רישום משתמש חדש
 export async function registerUser(username, email, password, role = 'user') {
@@ -43,7 +117,7 @@ export async function registerUser(username, email, password, role = 'user') {
         window.location.href = "userProfile.html"; // מעבר לעמוד פרופיל
     } catch (error) {
         console.error("שגיאה בהרשמה: ", error.message);
-    }
+    }
 }
 // התחברות למערכת
 export async function loginUser(email, password) {
@@ -67,7 +141,7 @@ export async function loginUser(email, password) {
     } catch (error) {
         console.error("שגיאה בהתחברות:", error.message);
         alert("שגיאה בהתחברות: " + error.message);
-    }
+    }
 }
 
 // יציאה מהמערכת
@@ -82,18 +156,19 @@ export async function logoutUser() {
 }
 
 // הוספת תור
-export async function addAppointment(userId, service, date, time) {
+export async function addAppointment(userId, service, date, time, duration) {
     try {
         const docRef = await addDoc(collection(db, "appointments"), {
             userId,
             service,
             date,
-            time
+            time,
+            duration // הוספת משך הזמן למסד
         });
         console.log("התור נוסף בהצלחה: ", docRef.id);
     } catch (error) {
         console.error("שגיאה בהוספת התור: ", error.message);
-    }
+    }
 }
 
 // קריאת תורים של משתמש
@@ -118,8 +193,8 @@ export async function deleteAppointment(appointmentId) {
         console.log("תור נמחק בהצלחה.");
     } catch (error) {
         console.error("שגיאה במחיקת התור:", error.message);
-        throw error;
-    }
+        throw error;
+    }
 }
 
 export async function updateAppointment(appointmentId, service, date, time) {
@@ -133,8 +208,8 @@ export async function updateAppointment(appointmentId, service, date, time) {
         console.log("התור עודכן בהצלחה");
     } catch (error) {
         console.error("שגיאה בעדכון התור:", error.message);
-        throw error;
-    }
+        throw error;
+    }
 }
 //קבלת תפקיד משתמש
 export async function getUserRole(userId) {
@@ -148,8 +223,8 @@ export async function getUserRole(userId) {
         }
     } catch (error) {
         console.error("שגיאה בקבלת תפקיד המשתמש: ", error.message);
-        return null;
-    }
+        return null;
+    }
 }
 
 //קבלת כל המשתמשים
@@ -198,8 +273,8 @@ export async function addBusiness(ownerEmail, businessName) {
         }
     } catch (error) {
         console.error("שגיאה בהוספת עסק:", error.message);
-        throw error;
-    }
+        throw error;
+    }
 }
 
 // קבלת כל העסקים
@@ -214,7 +289,7 @@ export async function getAllBusinesses() {
     } catch (error) {
         console.error("שגיאה בקבלת רשימת העסקים:", error.message);
         throw error;
-    }
+    }
 }
 
 // עדכון תפקיד המשתמש
@@ -239,8 +314,8 @@ export async function updateUserRole(email, newRole) {
         }
     } catch (error) {
         console.error("שגיאה בעדכון תפקיד המשתמש:", error.message);
-        throw error;
-    }
+        throw error;
+    }
 }
 
 // פונקציה למחיקת משתמש ממסד הנתונים
@@ -275,8 +350,8 @@ export async function getBusinessIdByOwner(ownerId) {
         throw new Error("לא נמצא עסק המשויך למשתמש.");
     } catch (error) {
         console.error("שגיאה בשליפת זהות העסק:", error.message);
-        throw error;
-    }
+        throw error;
+    }
 }
 //פונקציה לשליפת שירותים של עסק
 export async function getBusinessServices(businessId) {
@@ -291,8 +366,8 @@ export async function getBusinessServices(businessId) {
         return services;
     } catch (error) {
         console.error("שגיאה בשליפת שירותים:", error.message);
-        return [];
-    }
+        return [];
+    }
 }
 
 export async function getEmployeesForService(businessId, serviceId) {
@@ -306,8 +381,8 @@ export async function getEmployeesForService(businessId, serviceId) {
         return [];
     } catch (error) {
         console.error("שגיאה בשליפת עובדים לשירות:", error.message);
-        return [];
-    }
+        return [];
+    }
 }
 export async function addOrSelectService(businessId, serviceName) {
     try {
@@ -325,8 +400,8 @@ export async function addOrSelectService(businessId, serviceName) {
         return { id: docRef.id, name: serviceName };
     } catch (error) {
         console.error("שגיאה בהוספת שירות:", error.message);
-        throw error;
-    }
+        throw error;
+    }
 }
 export async function addOrSelectEmployee(businessId, employeeName) {
     try {
@@ -344,12 +419,13 @@ export async function addOrSelectEmployee(businessId, employeeName) {
         return { id: docRef.id, name: employeeName };
     } catch (error) {
         console.error("שגיאה בהוספת עובד:", error.message);
-        throw error;
-    }
+        throw error;
+    }
 }
 
 
 
+// עדכון פונקציה להוספת חלונות זמן עם isBooked ו-service
 export async function addTimeSlots(businessId, employeeId, date, slots) {
     try {
         const batch = writeBatch(db); // פעולת כתיבה מרובה
@@ -357,11 +433,18 @@ export async function addTimeSlots(businessId, employeeId, date, slots) {
 
         slots.forEach((slot) => {
             const docRef = doc(slotsRef);
-            batch.set(docRef, { date, time: slot.time, price: slot.price });
+            batch.set(docRef, {
+                date,
+                time: slot.time,
+                price: slot.price,
+                isBooked: slot.isBooked, // ערך ברירת מחדל: false
+                service: slot.service, // שם השירות
+                duration: slot.duration // משך זמן
+            });
         });
 
         await batch.commit();
-        console.log("חלונות הזמן נוספו בהצלחה עם מחירים.");
+        console.log("חלונות הזמן נוספו בהצלחה עם משך זמן.");
     } catch (error) {
         console.error("שגיאה בהוספת חלונות זמינים:", error.message);
         throw error;
@@ -378,8 +461,8 @@ export async function addService(businessId, name) {
         console.log(`השירות ${name} נוסף בהצלחה עם מזהה: ${docRef.id}`);
     } catch (error) {
         console.error("שגיאה בהוספת שירות:", error.message);
-        throw error;
-    }
+        throw error;
+    }
 }
 // קבלת פרטי משתמש
 export async function fetchUserData(userId) {
@@ -399,7 +482,7 @@ export async function fetchUserData(userId) {
 
 // מעקב אחר מצב האותנטיקציה
 export function onAuthStateChangedListener(callback) {
-    onAuthStateChanged(auth, callback);
+    onAuthStateChanged(auth, callback);
 }
 
 
