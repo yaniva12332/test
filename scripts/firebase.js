@@ -1,7 +1,8 @@
 // ייבוא הפונקציות הנדרשות מ-SDK של Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, addDoc, doc, setDoc, getDocs, updateDoc, deleteDoc, getDoc, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, writeBatch, addDoc, doc, setDoc, getDocs, updateDoc, deleteDoc, getDoc, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
 
 
 // הגדרות Firebase
@@ -20,6 +21,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+
 
 // רישום משתמש חדש
 export async function registerUser(username, email, password, role = 'user') {
@@ -240,7 +243,144 @@ export async function updateUserRole(email, newRole) {
     }
 }
 
+// פונקציה למחיקת משתמש ממסד הנתונים
+export async function deleteUserFromDatabase(userId) {
+    try {
+        await deleteDoc(doc(db, "users", userId));
+        console.log(`המשתמש ${userId} נמחק בהצלחה ממסד הנתונים.`);
+    } catch (error) {
+        console.error("שגיאה במחיקת המשתמש ממסד הנתונים:", error.message);
+        throw error;
+    }
+}
 
+// פונקציה לחסימת משתמש במסד הנתונים
+export async function blockUserInDatabase(userId, isBlocked) {
+    try {
+        await updateDoc(doc(db, "users", userId), { isBlocked });
+        console.log(`המשתמש ${userId} ${isBlocked ? "נחסם" : "שוחרר"} בהצלחה.`);
+    } catch (error) {
+        console.error("שגיאה בחסימת המשתמש במסד הנתונים:", error.message);
+        throw error;
+    }
+}
+//פונקציה לשליפת מזהה עסק לפי בעל עסק
+export async function getBusinessIdByOwner(ownerId) {
+    try {
+        const q = query(collection(db, "businesses"), where("ownerId", "==", ownerId));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            return querySnapshot.docs[0].id; // מזהה העסק
+        }
+        throw new Error("לא נמצא עסק המשויך למשתמש.");
+    } catch (error) {
+        console.error("שגיאה בשליפת זהות העסק:", error.message);
+        throw error;
+    }
+}
+//פונקציה לשליפת שירותים של עסק
+export async function getBusinessServices(businessId) {
+    try {
+        const servicesRef = collection(db, `businesses/${businessId}/services`);
+        const querySnapshot = await getDocs(servicesRef);
+        const services = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        console.log("שירותים שנשלפו:", services);
+        return services;
+    } catch (error) {
+        console.error("שגיאה בשליפת שירותים:", error.message);
+        return [];
+    }
+}
+
+export async function getEmployeesForService(businessId, serviceId) {
+    try {
+        const docRef = doc(db, "businesses", businessId);
+        const businessDoc = await getDoc(docRef);
+        if (businessDoc.exists()) {
+            const employees = businessDoc.data().employees || [];
+            return employees.filter(employee => employee.services?.includes(serviceId)) || [];
+        }
+        return [];
+    } catch (error) {
+        console.error("שגיאה בשליפת עובדים לשירות:", error.message);
+        return [];
+    }
+}
+export async function addOrSelectService(businessId, serviceName) {
+    try {
+        const servicesRef = collection(db, `businesses/${businessId}/services`);
+        const q = query(servicesRef, where("name", "==", serviceName));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            const serviceDoc = querySnapshot.docs[0];
+            return { id: serviceDoc.id, ...serviceDoc.data() }; // שירות קיים
+        }
+
+        // הוספת שירות חדש
+        const docRef = await addDoc(servicesRef, { name: serviceName });
+        return { id: docRef.id, name: serviceName };
+    } catch (error) {
+        console.error("שגיאה בהוספת שירות:", error.message);
+        throw error;
+    }
+}
+export async function addOrSelectEmployee(businessId, employeeName) {
+    try {
+        const employeesRef = collection(db, `businesses/${businessId}/employees`);
+        const q = query(employeesRef, where("name", "==", employeeName));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            const employeeDoc = querySnapshot.docs[0];
+            return { id: employeeDoc.id, ...employeeDoc.data() }; // עובד קיים
+        }
+
+        // הוספת עובד חדש
+        const docRef = await addDoc(employeesRef, { name: employeeName, timeSlots: [] });
+        return { id: docRef.id, name: employeeName };
+    } catch (error) {
+        console.error("שגיאה בהוספת עובד:", error.message);
+        throw error;
+    }
+}
+
+
+
+export async function addTimeSlots(businessId, employeeId, date, slots) {
+    try {
+        const batch = writeBatch(db); // פעולת כתיבה מרובה
+        const slotsRef = collection(db, `businesses/${businessId}/employees/${employeeId}/timeSlots`);
+
+        slots.forEach((slot) => {
+            const docRef = doc(slotsRef);
+            batch.set(docRef, { date, time: slot.time, price: slot.price });
+        });
+
+        await batch.commit();
+        console.log("חלונות הזמן נוספו בהצלחה עם מחירים.");
+    } catch (error) {
+        console.error("שגיאה בהוספת חלונות זמינים:", error.message);
+        throw error;
+    }
+}
+// הוספת שירות חדש
+export async function addService(businessId, name) {
+    try {
+        const servicesRef = collection(db, `businesses/${businessId}/services`);
+        const docRef = await addDoc(servicesRef, {
+            name,
+            createdAt: new Date(),
+        });
+        console.log(`השירות ${name} נוסף בהצלחה עם מזהה: ${docRef.id}`);
+    } catch (error) {
+        console.error("שגיאה בהוספת שירות:", error.message);
+        throw error;
+    }
+}
 // קבלת פרטי משתמש
 export async function fetchUserData(userId) {
     try {
@@ -261,3 +401,13 @@ export async function fetchUserData(userId) {
 export function onAuthStateChangedListener(callback) {
     onAuthStateChanged(auth, callback);
 }
+
+
+
+
+
+
+
+
+
+
