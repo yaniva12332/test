@@ -7,78 +7,97 @@
     <link rel="stylesheet" href="styles/main.css">
 </head>
 <body>
-    <h1>פרופיל מתשתמש</h1>
+    <h1>פרופיל משתמש</h1>
+
+    <!-- פרטי משתמש -->
     <section>
         <h2>פרטי משתמש</h2>
         <p><strong>שם משתמש:</strong> <span id="username">טוען...</span></p>
         <p><strong>אימייל:</strong> <span id="email">טוען...</span></p>
+    </section>
 
+    <!-- תורים עתידיים -->
+    <section>
         <h2>תורים עתידיים</h2>
         <ul id="appointments-list">
             <li>טוען תורים...</li>
         </ul>
     </section>
 
+    <!-- הוספת תור חדש -->
     <section>
         <h2>הוסף תור חדש</h2>
         <form id="addAppointmentForm">
             <label for="service">שירות:</label>
             <input type="text" id="service" required>
-
             <label for="date">תאריך:</label>
             <input type="date" id="date" required>
-
             <label for="time">שעה:</label>
             <input type="time" id="time" required>
-
             <button type="submit">הוסף תור</button>
         </form>
-    </section>
+    </section>
 
+    <!-- אזור מנהלים -->
+    <section id="adminSection" style="display: none;">
+        <h1>אזור מנהלים</h1>
 
-    <h1 id="adminSection" style="display: none;">אזור מנהלים</h1>
-<section id="addServiceSection" style="display: none;">
-    <h2>הוספת שירותים</h2>
-    <form id="addServiceForm">
-        <label for="serviceName">שם השירות:</label>
-        <input type="text" id="serviceName" required>
-        <button type="submit">הוסף שירות</button>
-    </form>
-</section>
+        <!-- הוספת שירות -->
+        <section>
+            <h2>הוספת שירות</h2>
+            <form id="addServiceForm">
+                <label for="serviceName">שם השירות:</label>
+                <input type="text" id="serviceName" required>
+                <button type="submit">הוסף שירות</button>
+            </form>
+        </section>
 
-<section id="viewServicesSection" style="display: none;">
-    <h2>שירותים קיימים</h2>
-    <ul id="services-list">
-        <li>טוען שירותים...</li>
-    </ul>
-</section>
+        <!-- הוספת עובד -->
+        <section>
+            <h2>הוספת עובד</h2>
+            <form id="addEmployeeForm">
+                <label for="employeeName">שם העובד:</label>
+                <input type="text" id="employeeName" required>
+                <button type="submit">הוסף עובד</button>
+            </form>
+        </section>
 
-    <section id="timeSlotSection" style="display: none;">
-        <h2>הוספת חלונות זמן</h2>
-        <form id="timeSlotForm" novalidate>
-            <label for="service">שירות:</label>
-            <input type="text" id="service2" placeholder="הכנס שם שירות"  required>
+        <!-- הוספת חלונות זמן -->
+        <section>
+            <h2>הוספת חלונות זמן</h2>
+            <form id="addTimeSlotForm">
+                <label for="service">שירות:</label>
+                <input type="text" id="service2" required>
+                <label for="employee">עובד:</label>
+                <input type="text" id="employee2" required>
+                <label for="date">תאריך:</label>
+                <input type="date" id="date2" required>
+                <label for="startTime">שעת התחלה:</label>
+                <input type="time" id="startTime" required>
+                <label for="endTime">שעת סיום:</label>
+                <input type="time" id="endTime" required>
+                <label for="duration">משך זמן(בדקות):</label>
+                <input type="number" id="duration" required>
+                <label for="price">מחיר:</label>
+                <input type="number" id="price" required>
+                <button type="submit">הוסף חלונות זמן</button>
+            </form>
+        </section>
 
-            <label for="employee">עובד:</label>
-            <input type="text" id="employee" placeholder="הכנס שם עובד" required>
+        <section>
+            <h2>רשימת חלונות זמינים</h2>
+            <ul id="timeSlotsList">
+                <!-- רשימת חלונות הזמן תתווסף כאן -->
+            </ul>
+        </section>
 
-            <label for="date">תאריך:</label>
-            <input type="date" id="date2" min="" required>
+        <section>
+            <h2>רשימת עובדים</h2>
+            <ul id="employeeList">
+                <!-- רשימת העובדים תתווסף כאן -->
+            </ul>
+        </section>
 
-            <label for="startTime">שעת התחלה:</label>
-            <input type="time" id="startTime" required>
-
-            <label for="endTime">שעת סיום:</label>
-            <input type="time" id="endTime" required>
-
-            <label for="slotDuration">משך זמן (בדקות):</label>
-            <input type="number" id="slotDuration" required><br>
-
-            <label for="price">מחיר:</label>
-            <input type="number" id="price" required>
-
-            <button type="submit">הוסף חלונות זמן</button>
-        </form>
     </section>
 
     <button id="logoutButton">התנתק</button>
@@ -87,235 +106,6 @@
         <p>&copy; 2024 TimeMaster. כל הזכויות שמורות.</p>
     </footer>
 
-    <!-- הוספת לוגיקה מותאמת -->
-    <script type="module">
-        import { auth, fetchUserData, getUserAppointments, addAppointment, logoutUser, onAuthStateChangedListener,
-             deleteAppointment, updateAppointment, getUserRole, getBusinessIdByOwner, getBusinessServices,
-             getEmployeesForService, addService, addOrSelectService, addOrSelectEmployee, addTimeSlots } from "./scripts/firebase.js";
-
-        document.addEventListener("DOMContentLoaded", () => {
-            const emailSpan = document.getElementById("email");
-            const usernameSpan = document.getElementById("username");
-            const appointmentsList = document.getElementById("appointments-list");
-            const timeSlotSection = document.getElementById("timeSlotSection");
-            const timeSlotForm = document.getElementById("timeSlotForm");
-            const addServiceForm = document.getElementById("addServiceForm");
-            const serviceName = document.getElementById("service2").value.trim();
-            const employeeName = document.getElementById("employee").value.trim();
-            const dateInput = document.getElementById("date2");
-            const today = new Date().toISOString().split("T")[0]; // תאריך בפורמט YYYY-MM-DD
-            dateInput.setAttribute("min", today);
-            const startTime = document.getElementById("startTime").value;
-            const endTime = document.getElementById("endTime").value;
-            const slotDuration = parseInt(document.getElementById("slotDuration").value, 10);
-            const price = parseFloat(document.getElementById("price").value);
-            document.getElementById("startTime").addEventListener("change", validateTime);
-            document.getElementById("date2").addEventListener("change", validateTime);
-
-        function validateTime() {
-            const dateInput = document.getElementById("date2").value; // תאריך נבחר
-            const startTimeInput = document.getElementById("startTime").value; // שעת התחלה נבחרת
-            const currentDate = new Date(); // תאריך ושעה נוכחיים
-
-            if (dateInput && startTimeInput) {
-                const selectedDateTime = new Date(`${dateInput}T${startTimeInput}`); // תאריך ושעה משולבים
-        
-                if (selectedDateTime < currentDate) {
-                    alert("לא ניתן לבחור שעה מהעבר!");
-                    document.getElementById("startTime").value = ""; // מחיקת שעת התחלה לא חוקית
-                }
-            }
-        }                   
-            // מעקב אחר מצב התחברות
-            onAuthStateChangedListener(async (user) => {
-                if (!user) {
-                    alert("לא מחובר! מפנה לדף התחברות...");
-                    window.location.href = "login.html";
-                    return;
-                }
-
-                try {
-                    const role = await getUserRole(user.uid);
-                    if (role === 'admin') {
-                        document.getElementById('adminSection').style.display = 'block'; // הצגת תכונות מנהל
-                        addServiceSection.style.display = "block"; // הצג את טופס הוספת השירותים
-                        timeSlotSection.style.display = 'block';
-                        document.getElementById("viewServicesSection").style.display = "block"; // הצגת סקשן השירותים
-
-                                                // שליפת פרטי העסק
-                                                const businessId = await getBusinessIdByOwner(user.uid);
-                                                
-                                                
-                   // טיפול בטופס הוספת שירותים
-                   timeSlotForm.addEventListener("submit", async (event) => {
-                   event.preventDefault();
-
-
-                   const dateInput = document.getElementById("date2").value; // תאריך נבחר
-                   const startTimeInput = document.getElementById("startTime").value; // שעת התחלה
-                   const endTimeInput = document.getElementById("endTime").value; // שעת סיום
-                   const currentDate = new Date(); // תאריך ושעה נוכחיים
-
-                   if (dateInput && startTimeInput) {
-                       const selectedStartDateTime = new Date(`${dateInput}T${startTimeInput}`); // תאריך ושעת התחלה
-                       const selectedEndDateTime = new Date(`${dateInput}T${endTimeInput}`); // תאריך ושעת סיום
-
-                       if (selectedStartDateTime < currentDate) {
-                           alert("לא ניתן לבחור שעה מהעבר!");
-                           return;
-                       }
-
-                       if (selectedEndDateTime <= selectedStartDateTime) {
-                           alert("שעת הסיום חייבת להיות אחרי שעת ההתחלה!");
-                           return;
-                       }
-                   }
-
-                   try {
-                       // המשך הקוד שלך להוספת חלונות זמן
-                       alert("חלונות הזמן נוספו בהצלחה.");
-                   } catch (error) {
-                       console.error("שגיאה:", error.message);
-                       alert("שגיאה: " + error.message);
-                   }
-               });
-
-
-
-  
-                    } else {
-                        document.getElementById('adminSection').style.display = 'none'; // הסתרה למשתמשים רגילים
-                        timeSlotSection.style.display = 'none';
-                    }
-
-                    // הצגת פרטי המשתמש
-                    emailSpan.textContent = user.email;
-                    const userData = await fetchUserData(user.uid);
-                    usernameSpan.textContent = userData?.username || "לא נמצא שם משתמש";
-
-                    // הצגת תורים
-                    const appointments = await getUserAppointments(user.uid);
-                    appointmentsList.innerHTML = ""; // נקה רשימה
-                    if (appointments.length === 0) {
-                        appointmentsList.innerHTML = "<li>אין תורים עתידיים</li>";
-                    } else {
-                        appointments.forEach((appointment) => {
-                            const li = document.createElement("li");
-                            li.textContent = `${appointment.service} - ${appointment.date} - ${appointment.time}`;
-                            // כפתור עריכה
-                            const editButton = document.createElement("button");
-                            editButton.textContent = "ערוך";
-                            editButton.addEventListener("click", () => {
-                                editAppointment(appointment);
-                            });
-                            // כפתור מחיקה
-                            const deleteButton = document.createElement("button");
-                            deleteButton.textContent = "מחק";
-                            deleteButton.addEventListener("click", async () => {
-                                if (confirm("האם אתה בטוח שברצונך למחוק את התור?")) {
-                                    try {
-                                        await deleteAppointment(appointment.id);
-                                        li.remove(); // הסר את התור מהרשימה
-                                        alert("התור נמחק בהצלחה!");
-                                    } catch (error) {
-                                        console.error("שגיאה במחיקת תור:", error.message);
-                                        alert("שגיאה במחיקת התור: " + error.message);
-                                    }
-                                }
-                            });
-                            li.appendChild(editButton);
-                            li.appendChild(deleteButton);
-                            appointmentsList.appendChild(li);
-                            
-                        });
-                    }
-                } catch (error) {
-                    console.error("שגיאה בטעינת הנתונים: ", error.message);
-                }
-            });
-
-            // יציאה מהמערכת
-            document.getElementById("logoutButton").addEventListener("click", async () => {
-                try {
-                    await logoutUser();
-                    window.location.href = "login.html";
-                } catch (error) {
-                    console.error("שגיאה ביציאה: ", error.message);
-                }
-            });
-            // הוספת תור חדש
-            const addAppointmentForm = document.getElementById("addAppointmentForm");
-            addAppointmentForm.addEventListener("submit", async (event) => {
-                event.preventDefault();
-
-                const service = document.getElementById("service").value;
-                const date = document.getElementById("date").value;
-                const time = document.getElementById("time").value;
-
-                // מניעת הוספת תאריך מהעבר
-                const selectedDate = new Date(date);
-                const currentDate = new Date();
-                currentDate.setHours(0, 0, 0, 0); // איפוס שעה
-
-                if (selectedDate < currentDate) {
-                    alert("לא ניתן לבחור תאריך מהעבר!");
-                    return;
-                }
-
-                try {
-                    await addAppointment(auth.currentUser.uid, service, date, time);
-                    alert("התור נוסף בהצלחה!");
-                    window.location.reload(); // טען מחדש את העמוד
-                } catch (error) {
-                    console.error("שגיאה בהוספת תור:", error.message);
-                    alert("שגיאה בהוספת תור: " + error.message);
-                }
-            });
-            // פונקציית עריכת תור
-            function editAppointment(appointment) {
-                const editForm = document.createElement("form");
-                editForm.innerHTML = `
-                    <label for="editService">שירות:</label>
-                    <input type="text" id="editService" value="${appointment.service}" required>
-                    <label for="editDate">תאריך:</label>
-                    <input type="date" id="editDate" value="${appointment.date}" required>
-                    <label for="editTime">שעה:</label>
-                    <input type="time" id="editTime" value="${appointment.time}" required>
-                    <button type="submit">שמור</button>
-                    <button type="button" id="cancelEdit">ביטול</button>
-                `;
-
-                const li = Array.from(appointmentsList.children).find(
-                    (item) =>
-                        item.textContent.includes(appointment.service) &&
-                        item.textContent.includes(appointment.date) &&
-                        item.textContent.includes(appointment.time)
-                );
-
-                li.innerHTML = ""; // נקה את התור הנוכחי
-                li.appendChild(editForm);
-
-                editForm.addEventListener("submit", async (event) => {
-                    event.preventDefault();
-                    const updatedService = document.getElementById("editService").value;
-                    const updatedDate = document.getElementById("editDate").value;
-                    const updatedTime = document.getElementById("editTime").value;
-
-                    try {
-                        await updateAppointment(appointment.id, updatedService, updatedDate, updatedTime);
-                        alert("התור עודכן בהצלחה!");
-                        window.location.reload();
-                    } catch (error) {
-                        console.error("שגיאה בעדכון תור:", error.message);
-                        alert("שגיאה בעדכון התור: " + error.message);
-                    }
-                });
-
-                document.getElementById("cancelEdit").addEventListener("click", () => {
-                    window.location.reload();
-                });
-            }
-        });
-    </script>
+    <script type="module" src="./scripts/userProfile.js"></script>
 </body>
 </html>
