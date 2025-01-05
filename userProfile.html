@@ -42,16 +42,6 @@
     <section id="adminSection" style="display: none;">
         <h1>אזור מנהלים</h1>
 
-        <!-- הוספת שירות -->
-        <section>
-            <h2>הוספת שירות</h2>
-            <form id="addServiceForm">
-                <label for="serviceName">שם השירות:</label>
-                <input type="text" id="serviceName" required>
-                <button type="submit">הוסף שירות</button>
-            </form>
-        </section>
-
         <!-- הוספת עובד -->
         <section>
             <h2>הוספת עובד</h2>
@@ -66,9 +56,9 @@
         <section>
             <h2>הוספת חלונות זמן</h2>
             <form id="addTimeSlotForm">
-                <label for="service">שירות:</label>
+                <label for="service2">שירות:</label>
                 <input type="text" id="service2" required>
-                <label for="employee">עובד:</label>
+                <label for="employee2">עובד:</label>
                 <input type="text" id="employee2" required>
                 <label for="date">תאריך:</label>
                 <input type="date" id="date2" required>
@@ -85,17 +75,41 @@
         </section>
 
         <section>
-            <h2>רשימת חלונות זמינים</h2>
-            <ul id="timeSlotsList">
-                <!-- רשימת חלונות הזמן תתווסף כאן -->
-            </ul>
+            <h2>ניהול חלונות זמן</h2>
+            <label for="filterDate">סינון לפי תאריך:</label>
+            <input type="date" id="filterDate">
+            <label for="filterEmployee">סינון לפי שם עובד:</label>
+            <input type="text" id="filterEmployee" placeholder="שם עובד">
+            <button id="applyFiltersButton">סנן</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>תאריך</th>
+                        <th>שעה</th>
+                        <th>שם עובד</th>
+                        <th>שירות</th>
+                        <th>מחיר</th>
+                        <th>משך (דקות)</th>
+                        <th>סטטוס</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody id="timeSlotsTableBody">
+                    <!-- השורות ייווצרו דינמית -->
+                </tbody>
+            </table>
         </section>
 
         <section>
             <h2>רשימת עובדים</h2>
-            <ul id="employeeList">
+            <ul id="employeesList">
                 <!-- רשימת העובדים תתווסף כאן -->
             </ul>
+        </section>
+
+        <section>
+            <h2>פרטי העסק</h2>
+            <p><strong>שם העסק:</strong> <span id="businessName">טוען...</span></p>
         </section>
 
     </section>
