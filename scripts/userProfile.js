@@ -447,6 +447,8 @@ async function fetchAllTimeSlots(businessId) {
 
 async function fetchAndDisplayTimeSlots() {
     const tableBody = document.getElementById("timeSlotsTableBody");
+    const filterDate = document.getElementById("filterDate").value;
+    const filterEmployee = document.getElementById("filterEmployee").value.toLowerCase();
     tableBody.innerHTML = ""; // נקה את התוכן הקיים
 
     try {
@@ -458,7 +460,29 @@ async function fetchAndDisplayTimeSlots() {
             return;
         }
 
-        for (const slot of timeSlots) {
+        // סינון חלונות הזמן לפי תאריך ושם עובד
+        const filteredSlots = timeSlots.filter((slot) => {
+            const matchesDate = !filterDate || slot.date === filterDate;
+            const matchesEmployee =
+                !filterEmployee ||
+                (slot.employeeName && slot.employeeName.toLowerCase().includes(filterEmployee));
+            return matchesDate && matchesEmployee;
+        });
+
+        if (filteredSlots.length === 0) {
+            tableBody.innerHTML = "<tr><td colspan='7'>לא נמצאו חלונות זמן תואמים.</td></tr>";
+            return;
+        }
+
+        // סידור חלונות הזמן לפי שעה
+        filteredSlots.sort((a, b) => {
+            const timeA = new Date(`1970-01-01T${a.time}:00`);
+            const timeB = new Date(`1970-01-01T${b.time}:00`);
+            return timeA - timeB;
+        });
+
+        // יצירת השורות בטבלה
+        for (const slot of filteredSlots) {
             const employeeRef = doc(db, `businesses/${businessId}/employees/${slot.employeeId}`);
             const employeeDoc = await getDoc(employeeRef);
             const employeeName = employeeDoc.exists() ? employeeDoc.data().name : "לא ידוע";
@@ -474,7 +498,7 @@ async function fetchAndDisplayTimeSlots() {
                 <td>${slot.duration} דקות</td>
                 <td>${slot.isBooked ? "תפוס" : "פנוי"}</td>
                 <td>
-                    <button onclick="editTimeSlotEntry('${businessId}', '${slot.employeeId}', '${slot.id}', { service: 'שירות חדש' })">ערוך</button>
+                    <button onclick="editTimeSlotEntry('${businessId}', '${slot.employeeId}', '${slot.id}')">ערוך</button>
                     <button onclick="deleteTimeSlotEntry('${businessId}', '${slot.employeeId}', '${slot.id}')">מחק</button>
                 </td>
             `;
