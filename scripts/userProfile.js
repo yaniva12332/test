@@ -1,7 +1,8 @@
 import { auth, fetchUserData, db ,getUserAppointments, addAppointment, logoutUser, onAuthStateChangedListener,
     deleteAppointment, fetchTimeSlotsForBusiness,  deleteTimeSlot, fetchEmployeesForBusiness, getBusinessDetailsByOwner
     , getUserRole, getBusinessIdByOwner, addService, addOrSelectEmployee, addTimeSlots } from "./firebase.js";
-    import { getDocs, collection, deleteDoc, doc, updateDoc, getFirestore, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    import { getDocs, collection, deleteDoc, setDoc, doc, updateDoc, query, where, getFirestore, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     const emailSpan = document.getElementById("email");
@@ -245,33 +246,6 @@ window.onload = async () => {
         }
     }
 
-    // הוספת תור חדש
-    addAppointmentForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const service = document.getElementById("service").value.trim();
-        const date = document.getElementById("date").value;
-        const time = document.getElementById("time").value;
-
-        if (!validateDate(date)) {
-            alert("לא ניתן לבחור תאריך מהעבר!");
-            return;
-        }
-    
-        if (!service || !duration || duration <= 0) {
-            alert("נא למלא את כל השדות בצורה תקינה.");
-            return;
-        }
-    
-        try {
-            await addAppointment(auth.currentUser.uid, service, date, time);
-            alert("התור נוסף בהצלחה!");
-            await loadAppointments(auth.currentUser.uid);
-        } catch (error) {
-            console.error("שגיאה בהוספת תור:", error);
-        }    
-    });
-
-
     // הוספת עובד חדש
     addEmployeeForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -447,14 +421,19 @@ async function fetchAllTimeSlots(businessId) {
 
 async function fetchAndDisplayTimeSlots() {
     const tableBody = document.getElementById("timeSlotsTableBody");
-    const filterDate = document.getElementById("filterDate").value;
-    const filterEmployee = document.getElementById("filterEmployee").value.toLowerCase();
-    tableBody.innerHTML = ""; // נקה את התוכן הקיים
+    const filterDate = document.getElementById("filterDate").value; // ערך לסינון לפי תאריך
+    const filterEmployee = document.getElementById("filterEmployee").value.toLowerCase(); // ערך לסינון לפי שם עובד
+    tableBody.innerHTML = ""; // נקה את תוכן הטבלה
 
     try {
         const businessId = await getBusinessIdByOwner(auth.currentUser.uid); // קבלת מזהה העסק
-        const timeSlots = await fetchTimeSlotsForBusiness(businessId); // שליפת חלונות הזמן
+        if (!businessId) {
+            console.error("מזהה עסק לא נמצא עבור המשתמש המחובר.");
+            tableBody.innerHTML = "<tr><td colspan='7'>לא נמצא מזהה עסק.</td></tr>";
+            return;
+        }
 
+        const timeSlots = await fetchTimeSlotsForBusiness(businessId); // שליפת חלונות הזמן
         if (timeSlots.length === 0) {
             tableBody.innerHTML = "<tr><td colspan='7'>לא נמצאו חלונות זמן.</td></tr>";
             return;
@@ -462,10 +441,10 @@ async function fetchAndDisplayTimeSlots() {
 
         // סינון חלונות הזמן לפי תאריך ושם עובד
         const filteredSlots = timeSlots.filter((slot) => {
-            const matchesDate = !filterDate || slot.date === filterDate;
-            const matchesEmployee =
-                !filterEmployee ||
-                (slot.employeeName && slot.employeeName.toLowerCase().includes(filterEmployee));
+            const matchesDate = !filterDate || slot.date === filterDate; // סינון לפי תאריך
+            const matchesEmployee = 
+                !filterEmployee || 
+                (slot.employeeName && slot.employeeName.toLowerCase().includes(filterEmployee)); // סינון לפי שם עובד
             return matchesDate && matchesEmployee;
         });
 
@@ -483,9 +462,14 @@ async function fetchAndDisplayTimeSlots() {
 
         // יצירת השורות בטבלה
         for (const slot of filteredSlots) {
+            if (!slot.employeeId) {
+                console.error("Missing employeeId for slot:", slot);
+                continue; // דלג על חלון הזמן אם אין employeeId
+            }
+
             const employeeRef = doc(db, `businesses/${businessId}/employees/${slot.employeeId}`);
             const employeeDoc = await getDoc(employeeRef);
-            const employeeName = employeeDoc.exists() ? employeeDoc.data().name : "לא ידוע";
+            const employeeName = employeeDoc.exists() ? employeeDoc.data().name : "לא ידוע"; // שם העובד או "לא ידוע"
 
             const row = document.createElement("tr");
 
@@ -494,8 +478,8 @@ async function fetchAndDisplayTimeSlots() {
                 <td>${slot.time}</td>
                 <td>${employeeName}</td>
                 <td>${slot.service || "לא ידוע"}</td>
-                <td>${slot.price} ₪</td>
-                <td>${slot.duration} דקות</td>
+                <td>${slot.price || 0} ₪</td>
+                <td>${slot.duration || "לא צוין"} דקות</td>
                 <td>${slot.isBooked ? "תפוס" : "פנוי"}</td>
                 <td>
                     <button onclick="editTimeSlotEntry('${businessId}', '${slot.employeeId}', '${slot.id}')">ערוך</button>
@@ -510,7 +494,6 @@ async function fetchAndDisplayTimeSlots() {
         tableBody.innerHTML = "<tr><td colspan='7'>שגיאה בטעינת חלונות הזמן.</td></tr>";
     }
 }
-
 function editTimeSlotEntry(businessId, slot) {
     const newTime = prompt("הזן זמן חדש:", slot.time);
     const newPrice = prompt("הזן מחיר חדש:", slot.price);
@@ -563,3 +546,619 @@ document.addEventListener("DOMContentLoaded", fetchAndDisplayTimeSlots);
 
 window.deleteTimeSlotEntry = deleteTimeSlotEntry;
 window.editTimeSlotEntry = editTimeSlotEntry;
+
+// פונקציה לטעינת לקוחות
+async function loadClients() {
+    try {
+        // וידוא שמשתמש מחובר
+        if (!auth.currentUser) {
+            console.error("משתמש לא מחובר.");
+            return;
+        }
+
+        // שליפת מזהה העסק
+        const businessId = await getBusinessIdByOwner(auth.currentUser.uid);
+        if (!businessId) {
+            alert("מזהה עסק לא נמצא.");
+            return;
+        }
+
+        // שליפת רשימת הלקוחות
+        const clientsRef = collection(db, `businesses/${businessId}/clients`);
+        const querySnapshot = await getDocs(clientsRef);
+
+        // עדכון הרשימה
+        const clientsList = document.getElementById("clientsList");
+        clientsList.innerHTML = ""; // ניקוי רשימה קיימת
+        if (querySnapshot.empty) {
+            clientsList.innerHTML = "<li>לא נמצאו לקוחות</li>";
+            return;
+        }
+
+        querySnapshot.forEach((doc) => {
+            const clientData = doc.data();
+            const listItem = document.createElement("li");
+            listItem.textContent = clientData.email;
+            clientsList.appendChild(listItem);
+        });
+    } catch (error) {
+        console.error("שגיאה בטעינת לקוחות:", error.message);
+    }
+}
+
+// פונקציה להסרת לקוח לפי מייל
+async function removeClient(email) {
+    try {
+        // חיפוש הלקוח במערכת לפי המייל
+        const userQuery = query(collection(db, "users"), where("email", "==", email));
+        const userSnapshot = await getDocs(userQuery);
+
+        if (userSnapshot.empty) {
+            alert("הלקוח לא נמצא במערכת.");
+            return;
+        }
+
+        // שליפת מזהה הלקוח מתוך התוצאות
+        const userDoc = userSnapshot.docs[0];
+        const clientId = userDoc.id;
+
+        // שליפת מזהה העסק
+        const businessId = await getBusinessIdByOwner(auth.currentUser.uid);
+        if (!businessId) {
+            alert("מזהה עסק לא נמצא.");
+            return;
+        }
+
+        // הסרת הלקוח ממאגר הלקוחות של העסק
+        await deleteDoc(doc(db, `businesses/${businessId}/clients/${clientId}`));
+
+        // הסרת העסק ממאגר של הלקוח
+        await deleteDoc(doc(db, `users/${clientId}/businesses/${businessId}`));
+
+        alert("הלקוח הוסר בהצלחה!");
+        await loadClients(); // טוען מחדש את הרשימה
+    } catch (error) {
+        console.error("שגיאה בהסרת לקוח:", error.message);
+    }
+}
+
+// פתיחה/סגירה של רשימת לקוחות
+document.getElementById("toggleClientsButton").addEventListener("click", () => {
+    const clientsList = document.getElementById("clientsList");
+    if (clientsList.style.display === "none") {
+        clientsList.style.display = "block";
+        document.getElementById("toggleClientsButton").textContent = "הסתר לקוחות";
+        loadClients();
+    } else {
+        clientsList.style.display = "none";
+        document.getElementById("toggleClientsButton").textContent = "הצג לקוחות";
+    }
+});
+//פונקציה להוספת לקוח
+async function addClient(email) {
+    try {
+        // חיפוש הלקוח לפי מייל
+        const userQuery = query(collection(db, "users"), where("email", "==", email));
+        const userSnapshot = await getDocs(userQuery);
+
+        if (userSnapshot.empty) {
+            alert("הלקוח לא נמצא במערכת.");
+            return;
+        }
+
+        // שליפת מזהה הלקוח
+        const userDoc = userSnapshot.docs[0];
+        const clientId = userDoc.id;
+
+        // שליפת מזהה העסק של בעל העסק המחובר
+        const businessId = await getBusinessIdByOwner(auth.currentUser.uid);
+        if (!businessId) {
+            alert("מזהה עסק לא נמצא.");
+            return;
+        }
+
+        // עדכון העסק במסד הנתונים של הלקוח
+        await setDoc(doc(db, `users/${clientId}/businesses/${businessId}`), { businessId });
+
+        // עדכון הלקוח במסד הנתונים של העסק
+        await setDoc(doc(db, `businesses/${businessId}/clients/${clientId}`), { email });
+
+        alert("הלקוח נוסף בהצלחה!");
+        loadClients(); // טוען מחדש את רשימת הלקוחות
+    } catch (error) {
+        console.error("שגיאה בהוספת לקוח:", error.message);
+    }
+}
+// התחברות לטפסים להוספה והסרה
+document.getElementById("addClientForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const email = document.getElementById("clientEmail").value.trim();
+    if (!email) {
+        alert("נא להזין כתובת מייל תקינה.");
+        return;
+    }
+
+    await addClient(email); // הוספת לקוח
+    await loadClients(); // טעינת רשימת הלקוחות מחדש
+});
+
+document.getElementById("removeClientButton").addEventListener("click", async () => {
+    const email = document.getElementById("clientEmail").value.trim();
+    if (!email) {
+        alert("נא להזין כתובת מייל להסרה.");
+        return;
+    }
+
+    await removeClient(email); // הסרת לקוח
+});
+
+// 1. פונקציה לטעינת רשימת העסקים
+async function loadBusinesses() {
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            try {
+                console.log("משתמש מחובר:", user.uid);
+                const clientId = user.uid;
+
+                // שליפת העסקים לפי מזהה המשתמש
+                const businessesRef = collection(db, `users/${clientId}/businesses`);
+                const querySnapshot = await getDocs(businessesRef);
+
+                if (querySnapshot.empty) {
+                    alert("לא נמצאו עסקים עבור המשתמש.");
+                    return;
+                }
+
+                // עדכון הרשימה בממשק
+                const businessSelect = document.getElementById("businessSelect");
+                businessSelect.innerHTML = ""; // ניקוי הרשימה הקיימת
+
+                let firstBusinessId = null;
+
+                // שימוש בלולאת for...of במקום forEach
+                for (const docSnap of querySnapshot.docs) {
+                    const businessData = docSnap.data();
+                    const businessId = businessData.businessId;
+
+                    // וידוא שה-businessId תקין
+                    if (!businessId) {
+                        console.warn("businessId חסר במסמך:", docSnap.id);
+                        continue;
+                    }
+
+                    // שליפת פרטי העסק מהקולקציה הראשית
+                    const businessDocRef = doc(db, `businesses/${businessId}`);
+                    const businessDoc = await getDoc(businessDocRef);
+
+                    if (!businessDoc.exists()) {
+                        console.warn(`לא נמצא מסמך לעסק עם מזהה: ${businessId}`);
+                        continue;
+                    }
+
+                    // שליפת שם העסק
+                    const businessName = businessDoc.data().name || "שם עסק לא זמין";
+
+                    // הוספת אפשרות לרשימה
+                    const option = document.createElement("option");
+                    option.value = businessId;
+                    option.textContent = businessName;
+                    businessSelect.appendChild(option);
+
+                    // שמירה על המזהה של העסק הראשון
+                    if (!firstBusinessId) {
+                        firstBusinessId = businessId;
+                    }
+                }
+
+                console.log("עסקים נטענו בהצלחה.");
+
+                // אם יש עסקים, טען את השירותים לעסק הראשון
+                if (firstBusinessId) {
+                    await loadServices(firstBusinessId);
+                }
+            } catch (error) {
+                console.error("שגיאה בטעינת העסקים:", error.message);
+            }
+        } else {
+            console.error("משתמש לא מחובר.");
+            alert("אנא התחבר מחדש.");
+            window.location.href = "login.html"; // הפניה לעמוד התחברות
+        }
+    });
+}
+
+// 2. פונקציה לטעינת רשימת שירותים לפי עסק
+async function loadServices(businessId) {
+    const serviceSelect = document.getElementById("serviceSelect");
+    serviceSelect.innerHTML = "<option value=''>טוען שירותים...</option>";
+    serviceSelect.disabled = true; // נטרול התיבה בזמן הטעינה
+
+    try {
+        const employeesRef = collection(db, `businesses/${businessId}/employees`);
+        const employeesSnapshot = await getDocs(employeesRef);
+
+        if (employeesSnapshot.empty) {
+            console.warn("לא נמצאו עובדים עבור העסק.");
+            serviceSelect.innerHTML = "<option value=''>לא נמצאו שירותים</option>";
+            serviceSelect.disabled = true;
+            return;
+        }
+
+        const serviceSet = new Set();
+        for (const employeeDoc of employeesSnapshot.docs) {
+            const timeSlotsRef = collection(
+                db,
+                `businesses/${businessId}/employees/${employeeDoc.id}/timeSlots`
+            );
+            const timeSlotsSnapshot = await getDocs(timeSlotsRef);
+
+            timeSlotsSnapshot.forEach((timeSlotDoc) => {
+                const timeSlotData = timeSlotDoc.data();
+                if (timeSlotData.service) {
+                    serviceSet.add(timeSlotData.service);
+                }
+            });
+        }
+
+        serviceSelect.innerHTML = "";
+        if (serviceSet.size === 0) {
+            serviceSelect.innerHTML = "<option>לא נמצאו שירותים</option>";
+            serviceSelect.disabled = true;
+            return;
+        }
+
+        // הוספת שירותים לרשימה
+        serviceSet.forEach((service) => {
+            const option = document.createElement("option");
+            option.value = service;
+            option.textContent = service;
+            serviceSelect.appendChild(option);
+        });
+
+        serviceSelect.disabled = false;
+
+        // בחירת השירות הראשון כברירת מחדל וטעינת העובדים עבורו
+        const firstService = serviceSelect.value;
+        if (firstService) {
+            await loadEmployees(businessId, firstService); // קריאה לטעינת עובדים
+        }
+
+        console.log("שירותים נטענו בהצלחה.");
+    } catch (error) {
+        console.error("שגיאה בטעינת השירותים:", error.message);
+        serviceSelect.innerHTML = "<option>שגיאה בטעינת השירותים</option>";
+        serviceSelect.disabled = true;
+    }
+}
+// 3. פונקציה לטעינת עובדים לפי שירות
+async function loadEmployees(businessId, serviceId) {
+    console.log(`טוען עובדים עבור עסק ${businessId} ושירות ${serviceId}`);
+
+    const employeeSelect = document.getElementById("employeeSelect");
+    employeeSelect.innerHTML = "<option value=''>טוען עובדים...</option>";
+    employeeSelect.disabled = true;
+
+    try {
+        if (!businessId || !serviceId) {
+            console.warn("לא נבחרו עסק או שירות.");
+            employeeSelect.innerHTML = "<option value=''>לא נבחרו עסק או שירות</option>";
+            employeeSelect.disabled = true;
+            return;
+        }
+
+        // שליפת העובדים
+        const employeesRef = collection(db, `businesses/${businessId}/employees`);
+        const employeesSnapshot = await getDocs(employeesRef);
+
+        if (employeesSnapshot.empty) {
+            console.warn("לא נמצאו עובדים בעסק.");
+            employeeSelect.innerHTML = "<option value=''>לא נמצאו עובדים</option>";
+            employeeSelect.disabled = true;
+            return;
+        }
+
+        // שימוש במפה (Map) כדי למנוע כפילויות
+        const validEmployeesMap = new Map();
+
+        // בדיקת שירותים בכל חלונות הזמן של העובדים
+        for (const employeeDoc of employeesSnapshot.docs) {
+            const employeeId = employeeDoc.id;
+            const employeeName = employeeDoc.data().name || "עובד ללא שם";
+
+            const timeSlotsRef = collection(
+                db,
+                `businesses/${businessId}/employees/${employeeId}/timeSlots`
+            );
+            const timeSlotsSnapshot = await getDocs(timeSlotsRef);
+
+            timeSlotsSnapshot.forEach((timeSlotDoc) => {
+                const timeSlotData = timeSlotDoc.data();
+                if (timeSlotData.service === serviceId) {
+                    // הוספת עובד למפה (אם לא קיים כבר)
+                    if (!validEmployeesMap.has(employeeId)) {
+                        validEmployeesMap.set(employeeId, employeeName);
+                    }
+                }
+            });
+        }
+
+        // עדכון רשימת העובדים
+        employeeSelect.innerHTML = ""; // ניקוי הרשימה
+        if (validEmployeesMap.size === 0) {
+            console.warn("לא נמצאו עובדים המספקים את השירות.");
+            employeeSelect.innerHTML = "<option value=''>לא נמצאו עובדים המספקים את השירות</option>";
+            employeeSelect.disabled = true;
+            return;
+        }
+
+        validEmployeesMap.forEach((name, id) => {
+            const option = document.createElement("option");
+            option.value = id;
+            option.textContent = name;
+            employeeSelect.appendChild(option);
+        });
+
+        employeeSelect.disabled = false; // הפיכת הרשימה לפעילה
+        console.log("עובדים נטענו בהצלחה.");
+
+        // בחירת העובד הראשון כברירת מחדל והפעלת הפונקציה של חלונות הזמן
+        const firstEmployeeId = employeeSelect.options[0]?.value;
+        if (firstEmployeeId) {
+            await loadAvailableDatesAndTimeSlots(businessId, firstEmployeeId); // קריאה לטעינת חלונות הזמן
+        }
+    } catch (error) {
+        console.error("שגיאה בטעינת עובדים:", error.message);
+        employeeSelect.innerHTML = "<option value=''>שגיאה בטעינת עובדים</option>";
+        employeeSelect.disabled = true;
+    }
+}
+async function loadAvailableDatesAndTimeSlots(businessId, employeeId) {
+    console.log(`טוען תאריכים וחלונות זמן לעובד ${employeeId} בעסק ${businessId}`);
+    const dateSelect = document.getElementById("dateSelect");
+    const timeSlotSelect = document.getElementById("timeSlotSelect");
+
+    dateSelect.innerHTML = "<option value=''>טוען תאריכים...</option>";
+    timeSlotSelect.innerHTML = "<option value=''>בחר חלון זמן</option>";
+    dateSelect.disabled = true;
+    timeSlotSelect.disabled = true;
+
+    try {
+        if (!businessId || !employeeId) {
+            console.warn("לא נבחרו עסק או עובד.");
+            dateSelect.innerHTML = "<option value=''>לא נבחרו עסק או עובד</option>";
+            dateSelect.disabled = true;
+            return;
+        }
+
+        // שליפת חלונות הזמן
+        const timeSlotsRef = collection(
+            db,
+            `businesses/${businessId}/employees/${employeeId}/timeSlots`
+        );
+        const timeSlotsSnapshot = await getDocs(timeSlotsRef);
+
+        if (timeSlotsSnapshot.empty) {
+            console.warn("לא נמצאו חלונות זמן פנויים לעובד.");
+            dateSelect.innerHTML = "<option value=''>לא נמצאו תאריכים</option>";
+            dateSelect.disabled = true;
+            return;
+        }
+
+        // יצירת סט של תאריכים ייחודיים
+        const availableDates = new Set();
+        const timeSlotsByDate = {};
+
+        timeSlotsSnapshot.forEach((timeSlotDoc) => {
+            const timeSlotData = timeSlotDoc.data();
+            if (!timeSlotData.isBooked) {
+                const date = timeSlotData.date;
+                availableDates.add(date);
+
+                // שמירת חלונות הזמן לפי תאריך
+                if (!timeSlotsByDate[date]) {
+                    timeSlotsByDate[date] = [];
+                }
+                timeSlotsByDate[date].push({
+                    id: timeSlotDoc.id,
+                    time: timeSlotData.time,
+                });
+            }
+        });
+
+        // עדכון רשימת התאריכים
+        dateSelect.innerHTML = ""; // ניקוי הרשימה
+        if (availableDates.size === 0) {
+            console.warn("לא נמצאו תאריכים זמינים.");
+            dateSelect.innerHTML = "<option value=''>לא נמצאו תאריכים זמינים</option>";
+            dateSelect.disabled = true;
+            return;
+        }
+
+        // הוספת התאריכים לרשימה
+        let firstDate = null;
+        availableDates.forEach((date) => {
+            const option = document.createElement("option");
+            option.value = date;
+            option.textContent = date;
+            dateSelect.appendChild(option);
+
+            if (!firstDate) {
+                firstDate = date; // שמירת התאריך הראשון כברירת מחדל
+            }
+        });
+
+        dateSelect.disabled = false; // הפיכת הרשימה לפעילה
+
+        // אם יש תאריך ראשון, טען אוטומטית את השעות עבורו
+        if (firstDate) {
+            dateSelect.value = firstDate; // בחירת התאריך הראשון
+            loadTimeSlotsByDate(timeSlotsByDate, firstDate); // קריאה לפונקציה לטעינת חלונות הזמן
+        }
+
+        // אירוע לשינוי תאריך
+        dateSelect.addEventListener("change", () => {
+            const selectedDate = dateSelect.value;
+            loadTimeSlotsByDate(timeSlotsByDate, selectedDate);
+        });
+
+        console.log("תאריכים וחלונות זמן נטענו בהצלחה.");
+    } catch (error) {
+        console.error("שגיאה בטעינת תאריכים וחלונות זמן:", error.message);
+        dateSelect.innerHTML = "<option value=''>שגיאה בטעינת תאריכים</option>";
+        dateSelect.disabled = true;
+    }
+}
+function loadTimeSlotsByDate(timeSlotsByDate, selectedDate) {
+    const timeSlotSelect = document.getElementById("timeSlotSelect");
+    timeSlotSelect.innerHTML = "<option value=''>טוען חלונות זמן...</option>";
+    timeSlotSelect.disabled = true;
+
+    if (!selectedDate || !timeSlotsByDate[selectedDate]) {
+        console.warn("לא נבחר תאריך תקין או אין חלונות זמן עבור התאריך.");
+        timeSlotSelect.innerHTML = "<option value=''>לא נמצאו חלונות זמן</option>";
+        timeSlotSelect.disabled = true;
+        return;
+    }
+
+    const timeSlots = timeSlotsByDate[selectedDate];
+    timeSlotSelect.innerHTML = ""; // ניקוי הרשימה
+
+    timeSlots
+        .sort((a, b) => a.time.localeCompare(b.time)) // סידור השעות בסדר עולה
+        .forEach((timeSlot) => {
+            const option = document.createElement("option");
+            option.value = timeSlot.id;
+            option.textContent = timeSlot.time;
+            timeSlotSelect.appendChild(option);
+        });
+
+    timeSlotSelect.disabled = false; // הפיכת הרשימה לפעילה
+    console.log("חלונות זמן עבור תאריך נבחר נטענו בהצלחה.");
+}
+async function calculateAndDisplayPrice() {
+    const businessId = document.getElementById("businessSelect").value;
+    const serviceId = document.getElementById("serviceSelect").value;
+    const employeeId = document.getElementById("employeeSelect").value;
+    const date = document.getElementById("dateSelect").value;
+    const timeSlotId = document.getElementById("timeSlotSelect").value;
+    const priceElement = document.getElementById("appointmentPrice");
+
+    // בדיקת תקינות של כל הערכים
+    if (!businessId || !serviceId || !employeeId || !date || !timeSlotId) {
+        alert("נא לבחור את כל הערכים לפני בדיקת המחיר.");
+        return;
+    }
+
+    try {
+        // שליפת פרטי חלון הזמן כדי לקבל את המחיר
+        const timeSlotRef = doc(
+            db,
+            `businesses/${businessId}/employees/${employeeId}/timeSlots/${timeSlotId}`
+        );
+        const timeSlotDoc = await getDoc(timeSlotRef);
+
+        if (timeSlotDoc.exists()) {
+            const timeSlotData = timeSlotDoc.data();
+            const price = timeSlotData.price || 0; // ברירת מחדל למחיר אם אינו מוגדר
+            priceElement.textContent = `מחיר כולל: ${price} ₪`;
+        } else {
+            console.error("לא נמצא מסמך עבור חלון הזמן שנבחר.");
+            priceElement.textContent = "מחיר כולל: שגיאה";
+        }
+    } catch (error) {
+        console.error("שגיאה בחישוב המחיר:", error.message);
+        priceElement.textContent = "מחיר כולל: שגיאה";
+    }
+}
+document.getElementById("checkPriceButton").addEventListener("click", async () => {
+    await calculateAndDisplayPrice();
+});
+
+function resetPrice() {
+    const priceElement = document.getElementById("appointmentPrice");
+    priceElement.textContent = "מחיר כולל: 0 ₪";
+}
+
+// מאזינים לכל תיבות הבחירה
+document.getElementById("businessSelect").addEventListener("change", resetPrice);
+document.getElementById("serviceSelect").addEventListener("change", resetPrice);
+document.getElementById("employeeSelect").addEventListener("change", resetPrice);
+document.getElementById("dateSelect").addEventListener("change", resetPrice);
+document.getElementById("timeSlotSelect").addEventListener("change", resetPrice);
+
+// 6. פונקציה להוספת תור
+async function addAppointmentForClient(clientId, businessId, serviceId, employeeId, timeSlotId) {
+    try {
+        const timeSlotRef = doc(
+            db,
+            `businesses/${businessId}/employees/${employeeId}/timeSlots/${timeSlotId}`
+        );
+        const timeSlotDoc = await getDoc(timeSlotRef);
+        const timeSlotData = timeSlotDoc.data();
+
+        // עדכון אצל הלקוח
+        await setDoc(doc(db, `users/${clientId}/appointments, ${businessId}_${timeSlotId}`), {
+            businessId,
+            serviceId,
+            employeeId,
+            date: timeSlotData.date,
+            time: timeSlotData.time,
+            price: timeSlotData.price,
+        });
+
+        // עדכון אצל העסק
+        await updateDoc(timeSlotRef, {
+            isBooked: true,
+            clientId: clientId,
+        });
+
+        alert("התור נוסף בהצלחה!");
+    } catch (error) {
+        console.error("שגיאה בהוספת תור:", error.message);
+    }
+}
+
+// 7. חיבור אירועים לטופס
+document.getElementById("businessSelect").addEventListener("change", async () => {
+    const businessId = document.getElementById("businessSelect").value;
+    if (!businessId) return;
+
+    await loadServices(businessId);
+});
+
+document.getElementById("serviceSelect").addEventListener("change", async () => {
+    const businessId = document.getElementById("businessSelect").value;
+    const serviceId = document.getElementById("serviceSelect").value;
+    if (!businessId || !serviceId) return;
+
+    updatePrice(businessId, serviceId);
+    await loadEmployees(businessId, serviceId);
+});
+
+document.getElementById("employeeSelect").addEventListener("change", async () => {
+    const businessId = document.getElementById("businessSelect").value;
+    const employeeId = document.getElementById("employeeSelect").value;
+    if (!businessId || !employeeId) return;
+
+    await loadAvailableTimeSlots(businessId, employeeId);
+});
+
+document.getElementById("addAppointmentButton").addEventListener("click", async () => {
+    const clientId = auth.currentUser.uid;
+    const businessId = document.getElementById("businessSelect").value;
+    const serviceId = document.getElementById("serviceSelect").value;
+    const employeeId = document.getElementById("employeeSelect").value;
+    const timeSlotId = document.getElementById("timeSlotSelect").value;
+
+    if (!clientId || !businessId || !serviceId || !employeeId || !timeSlotId) {
+        alert("נא למלא את כל השדות.");
+        return;
+    }
+
+    await addAppointmentForClient(clientId, businessId, serviceId, employeeId, timeSlotId);
+});
+
+// 8. קריאה לטעינת רשימת העסקים בזמן טעינת הדף
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadBusinesses();
+});
