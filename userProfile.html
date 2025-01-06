@@ -25,22 +25,57 @@
     </section>
 
     <!-- הוספת תור חדש -->
-    <section>
-        <h2>הוסף תור חדש</h2>
-        <form id="addAppointmentForm">
-            <label for="service">שירות:</label>
-            <input type="text" id="service" required>
-            <label for="date">תאריך:</label>
-            <input type="date" id="date" required>
-            <label for="time">שעה:</label>
-            <input type="time" id="time" required>
-            <button type="submit">הוסף תור</button>
-        </form>
-    </section>
+    <h2>הוספת תור חדש</h2>
+    <form id="appointmentForm">
+        <label for="businessSelect">בחר עסק:</label>
+        <select id="businessSelect">
+            <option value="">בחר עסק</option>
+        </select>
+    
+        <label for="serviceSelect">בחר שירות:</label>
+        <select id="serviceSelect" disabled>
+            <option value="">בחר שירות</option>
+        </select>
+    
+        <label for="employeeSelect">בחר עובד:</label>
+        <select id="employeeSelect" disabled>
+            <option value="">בחר עובד</option>
+        </select>
 
+        <label for="dateSelect">בחר תאריך:</label>
+        <select id="dateSelect" disabled>
+            <option value="">בחר תאריך</option>
+        </select>
+    
+        <label for="timeSlotSelect">בחר חלון זמן:</label>
+        <select id="timeSlotSelect" disabled>
+            <option value="">בחר חלון זמן</option>
+        </select>
+    
+        <button id="checkPriceButton" type="button">בדוק מחיר</button>
+        <span id="appointmentPrice">מחיר כולל: 0 ₪</span>
+        <button type="button" id="addAppointmentButton">הוסף תור</button>
+    </form>
+    
+    <h1>אזור מנהלים</h1>
     <!-- אזור מנהלים -->
     <section id="adminSection" style="display: none;">
-        <h1>אזור מנהלים</h1>
+        <div>
+            <h2>הוספת לקוח</h2>
+            <!-- טופס להוספת/הסרת לקוח -->
+            <form id="addClientForm">
+                <label for="clientEmail">מייל של הלקוח:</label>
+                <input type="email" id="clientEmail" required />
+                <button type="submit">הוסף לקוח</button>
+                <button type="button" id="removeClientButton">הסר לקוח</button>
+            </form>
+        
+            <!-- כפתור להצגת/הסתרת רשימת לקוחות -->
+            <button id="toggleClientsButton">הצג לקוחות</button>
+        
+            <!-- רשימת הלקוחות -->
+            <ul id="clientsList" style="display: none;"></ul>
+        </div>
 
         <!-- הוספת עובד -->
         <section>
