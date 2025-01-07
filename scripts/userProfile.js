@@ -39,18 +39,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 async function loadEmployees() {
-    console.log("Loading employees...");
 
     // ודא שהמשתמש מחובר
     if (!auth.currentUser) {
-        console.error("User is not logged in.");
         return;
     }
 
     try {
         const businessId = await getBusinessIdByOwner(auth.currentUser.uid);
-        console.log("Business ID:", businessId);
-
         if (!businessId) {
             console.error("No business ID found.");
             document.getElementById("employeesList").innerHTML = "<li>לא נמצא מזהה עסק.</li>";
@@ -59,8 +55,6 @@ async function loadEmployees() {
 
         // שליפת רשימת העובדים
         const employeesSnapshot = await getDocs(collection(db, `businesses/${businessId}/employees`));
-        console.log("Employees Snapshot:", employeesSnapshot);
-
         if (employeesSnapshot.empty) {
             console.log("No employees found.");
             document.getElementById("employeesList").innerHTML = "<li>לא נמצאו עובדים.</li>";
@@ -80,15 +74,12 @@ async function loadEmployees() {
             employeesList.appendChild(listItem);
         });
     } catch (error) {
-        console.error("Error loading employees:", error.message);
-        document.getElementById("employeesList").innerHTML = `<li>שגיאה בטעינת העובדים: ${error.message}</li>`;
     }
 }
 
 
 // קריאה לפונקציה בעת טעינת הדף
 window.onload = async () => {
-    console.log("Window loaded!");
     await loadEmployees();
 };
 
@@ -221,24 +212,7 @@ window.onload = async () => {
     });
 
 
-    // הוספת עובד חדש
-    addEmployeeForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const employeeName = document.getElementById("employeeName").value.trim();
 
-        if (!employeeName) {
-            alert("נא להזין שם עובד");
-            return;
-        }
-
-        try {
-            const businessId = await getBusinessIdByOwner(auth.currentUser.uid);
-            await addOrSelectEmployee(businessId, employeeName);
-            alert("העובד נוסף בהצלחה!");
-        } catch (error) {
-            console.error("שגיאה בהוספת עובד:", error);
-        }
-    });
 
     addTimeSlotForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -469,27 +443,32 @@ async function fetchAndDisplayTimeSlots() {
         tableBody.innerHTML = "<tr><td colspan='7'>שגיאה בטעינת חלונות הזמן.</td></tr>";
     }
 }
-function editTimeSlotEntry(businessId, slot) {
-    const newTime = prompt("הזן זמן חדש:", slot.time);
-    const newPrice = prompt("הזן מחיר חדש:", slot.price);
+function editTimeSlotEntry(businessId, employeeId, slotId) {
+    if (!businessId || !employeeId || !slotId) {
+        console.error("אחד הפרמטרים חסר:", { businessId, employeeId, slotId });
+        alert("שגיאה: אחד הפרמטרים חסר.");
+        return;
+    }
+
+    const newTime = prompt("הזן זמן חדש:");
+    const newPrice = prompt("הזן מחיר חדש:");
 
     if (newTime && newPrice) {
-        const slotRef = doc(
-            db,
-            `businesses/${businessId}/employees/${slot.employeeId}/timeSlots/${slot.id}`
-        );
+        const slotRef = doc(db, `businesses/${businessId}/employees/${employeeId}/timeSlots/${slotId}`);
 
         updateDoc(slotRef, {
             time: newTime,
             price: parseFloat(newPrice),
         })
-            .then(() => {
-                alert("חלון הזמן עודכן בהצלחה!");
-                fetchAndDisplayTimeSlots();
-            })
-            .catch((error) => {
-                console.error("שגיאה בעדכון חלון הזמן:", error.message);
-            });
+        .then(() => {
+            alert("חלון הזמן עודכן בהצלחה!");
+            fetchAndDisplayTimeSlots();
+        })
+        .catch((error) => {
+            console.error("שגיאה בעדכון חלון הזמן:", error.message);
+        });
+    } else {
+        alert("נא להזין פרטים תקינים לעדכון.");
     }
 }
 
@@ -672,7 +651,6 @@ async function loadBusinesses() {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             try {
-                console.log("משתמש מחובר:", user.uid);
                 const clientId = user.uid;
 
                 // שליפת העסקים לפי מזהה המשתמש
@@ -724,8 +702,6 @@ async function loadBusinesses() {
                         firstBusinessId = businessId;
                     }
                 }
-
-                console.log("עסקים נטענו בהצלחה.");
 
                 // אם יש עסקים, טען את השירותים לעסק הראשון
                 if (firstBusinessId) {
@@ -797,8 +773,6 @@ async function loadServices(businessId) {
         if (firstService) {
             await loadEmployees(businessId, firstService); // קריאה לטעינת עובדים
         }
-
-        console.log("שירותים נטענו בהצלחה.");
     } catch (error) {
         console.error("שגיאה בטעינת השירותים:", error.message);
         serviceSelect.innerHTML = "<option>שגיאה בטעינת השירותים</option>";
@@ -807,8 +781,6 @@ async function loadServices(businessId) {
 }
 // 3. פונקציה לטעינת עובדים לפי שירות
 async function loadEmployees(businessId, serviceId) {
-    console.log(`טוען עובדים עבור עסק ${businessId} ושירות ${serviceId}`);
-
     const employeeSelect = document.getElementById("employeeSelect");
     employeeSelect.innerHTML = "<option value=''>טוען עובדים...</option>";
     employeeSelect.disabled = true;
@@ -874,7 +846,6 @@ async function loadEmployees(businessId, serviceId) {
         });
 
         employeeSelect.disabled = false; // הפיכת הרשימה לפעילה
-        console.log("עובדים נטענו בהצלחה.");
 
         // בחירת העובד הראשון כברירת מחדל והפעלת הפונקציה של חלונות הזמן
         const firstEmployeeId = employeeSelect.options[0]?.value;
@@ -888,7 +859,6 @@ async function loadEmployees(businessId, serviceId) {
     }
 }
 async function loadAvailableDatesAndTimeSlots(businessId, employeeId) {
-    console.log(`טוען תאריכים וחלונות זמן לעובד ${employeeId} בעסק ${businessId}`);
     const dateSelect = document.getElementById("dateSelect");
     const timeSlotSelect = document.getElementById("timeSlotSelect");
 
@@ -975,8 +945,6 @@ async function loadAvailableDatesAndTimeSlots(businessId, employeeId) {
             const selectedDate = dateSelect.value;
             loadTimeSlotsByDate(timeSlotsByDate, selectedDate);
         });
-
-        console.log("תאריכים וחלונות זמן נטענו בהצלחה.");
     } catch (error) {
         console.error("שגיאה בטעינת תאריכים וחלונות זמן:", error.message);
         dateSelect.innerHTML = "<option value=''>שגיאה בטעינת תאריכים</option>";
@@ -1008,7 +976,6 @@ function loadTimeSlotsByDate(timeSlotsByDate, selectedDate) {
         });
 
     timeSlotSelect.disabled = false; // הפיכת הרשימה לפעילה
-    console.log("חלונות זמן עבור תאריך נבחר נטענו בהצלחה.");
 }
 async function calculateAndDisplayPrice() {
     const businessId = document.getElementById("businessSelect").value;
@@ -1173,7 +1140,6 @@ function initializeAppointments() {
 
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            console.log("משתמש מחובר:", user.uid);
             try {
                 const clientId = user.uid;
 
@@ -1269,3 +1235,83 @@ async function deleteAppointmentForClient(appointmentId) {
         alert("שגיאה במחיקת התור. נסה שוב מאוחר יותר.");
     }
 }
+//פונקציה למחיקת תורים עד יום אחד לפני
+async function deleteOldAppointmentsAndBusinessAppointments() {
+    try {
+        const today = new Date();
+        today.setDate(today.getDate() - 1); // יום אחד אחורה
+        today.setHours(0, 0, 0, 0);
+
+        // מחיקת תורים ישנים של לקוחות
+        const usersRef = collection(db, users);
+        const usersSnapshot = await getDocs(usersRef);
+
+        for (const userDoc of usersSnapshot.docs) {
+            const userId = userDoc.id;
+            const userAppointmentsRef = collection(db, `users/${userId}/appointments`);
+            const appointmentsSnapshot = await getDocs(userAppointmentsRef);
+
+            for (const appointmentDoc of appointmentsSnapshot.docs) {
+                const appointmentData = appointmentDoc.data();
+                const appointmentDate = new Date(appointmentData.date);
+
+                if (appointmentDate < today) {
+                    await deleteDoc(doc(db, `users/${userId}/appointments/${appointmentDoc.id}`));
+                }
+            }
+        }
+
+        console.log("תורים ישנים נמחקו אצל לקוחות.");
+
+        // מחיקת תורים ישנים של בעלי עסקים
+        const businessesRef = collection(db, businesses);
+        const businessesSnapshot = await getDocs(businessesRef);
+
+        for (const businessDoc of businessesSnapshot.docs) {
+            const businessId = businessDoc.id;
+            const employeesRef = collection(db, `businesses/${businessId}/employees`);
+            const employeesSnapshot = await getDocs(employeesRef);
+
+            for (const employeeDoc of employeesSnapshot.docs) {
+                const employeeId = employeeDoc.id;
+                const timeSlotsRef = collection(db, `businesses/${businessId}/employees/${employeeId}/timeSlots`);
+                const timeSlotsSnapshot = await getDocs(timeSlotsRef);
+
+                for (const timeSlotDoc of timeSlotsSnapshot.docs) {
+                    const timeSlotData = timeSlotDoc.data();
+                    const timeSlotDate = new Date(timeSlotData.date);
+
+                    if (timeSlotDate < today) {
+                        await deleteDoc(doc(db, `businesses/${businessId}/employees/${employeeId}/timeSlots/${timeSlotDoc.id}`));
+                    }
+                }
+            }
+        }
+
+        console.log("תורים ישנים נמחקו אצל בעלי עסקים.");
+    } catch (error) {
+        console.error("שגיאה במחיקת תורים ישנים:", error.message);
+    }
+}
+//להפעלת הפונקציה למחיקת תורים מהעבר
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        await deleteOldAppointmentsAndBusinessAppointments();
+    } catch (error) {
+        console.error("שגיאה במהלך טעינת הדף או מחיקת תורים:", error.message);
+    }
+});
+
+// פונקציה להחלפת מצב הצגת הטבלה
+document.getElementById("toggleTimeSlotsButton").addEventListener("click", async () => {
+    const tableContainer = document.getElementById("timeSlotsTableContainer");
+    const toggleButton = document.getElementById("toggleTimeSlotsButton");
+
+    if (tableContainer.style.display === "none") {
+        tableContainer.style.display = "block";
+        toggleButton.textContent = "הסתר טבלת חלונות זמן";
+    } else {
+        tableContainer.style.display = "none";
+        toggleButton.textContent = "הצג טבלת חלונות זמן";
+    }
+});
