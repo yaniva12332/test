@@ -111,7 +111,6 @@ window.onload = async () => {
             const userData = await fetchUserData(user.uid);
             usernameSpan.textContent = userData?.username || "לא נמצא שם משתמש";
 
-            await loadAppointments(user.uid);
         } catch (error) {
             console.error("שגיאה בטעינת הנתונים:", error);
         }
@@ -220,31 +219,7 @@ window.onload = async () => {
     document.addEventListener("DOMContentLoaded", async () => {
         await loadTimeSlotsAsList();
     });
-    // טעינת תורים
-    async function loadAppointments(userId) {
-        const appointments = await getUserAppointments(userId);
-        appointmentsList.innerHTML = ""; // ניקוי רשימה קיימת
 
-        if (appointments.length === 0) {
-            appointmentsList.innerHTML = "<li>אין תורים עתידיים</li>";
-        } else {
-            appointments.forEach((appointment) => {
-                const li = document.createElement("li");
-                li.textContent = `${appointment.service} - ${appointment.date} - ${appointment.time}`;
-                // כפתור מחיקה
-                const deleteButton = document.createElement("button");
-                deleteButton.textContent = "מחק";
-                deleteButton.addEventListener("click", async () => {
-                    if (confirm("האם אתה בטוח שברצונך למחוק את התור?")) {
-                        await deleteAppointment(appointment.id);
-                        await loadAppointments(userId); // טען מחדש את הרשימה
-                    }
-                });
-                li.appendChild(deleteButton);
-                appointmentsList.appendChild(li);
-            });
-        }
-    }
 
     // הוספת עובד חדש
     addEmployeeForm.addEventListener("submit", async (event) => {
@@ -1190,3 +1165,107 @@ document.getElementById("addAppointmentButton").addEventListener("click", async 
 document.addEventListener("DOMContentLoaded", async () => {
     await loadBusinesses();
 });
+
+// פונקציה לטעינת התורים של הלקוח
+function initializeAppointments() {
+    const appointmentsList = document.getElementById("appointments-list");
+    appointmentsList.innerHTML = "<li>טוען תורים...</li>";
+
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            console.log("משתמש מחובר:", user.uid);
+            try {
+                const clientId = user.uid;
+
+                // שליפת התורים ממסד הנתונים
+                const appointmentsRef = collection(db, `users/${clientId}/appointments`);
+                const querySnapshot = await getDocs(appointmentsRef);
+
+                // ניקוי הרשימה
+                appointmentsList.innerHTML = "";
+
+                if (querySnapshot.empty) {
+                    appointmentsList.innerHTML = "<li>אין תורים עתידיים.</li>";
+                    return;
+                }
+
+                // מעבר על כל התורים והוספתם לרשימה
+                querySnapshot.forEach((doc) => {
+                    const appointmentData = doc.data();
+
+                    // יצירת אלמנט עבור כל תור
+                    const li = document.createElement("li");
+                    li.textContent = `
+                        תאריך: ${appointmentData.date} 
+                        | שעה: ${appointmentData.time} 
+                        | שירות: ${appointmentData.serviceId} 
+                        | מחיר: ${appointmentData.price || "לא זמין"} ₪
+                    `;
+
+                    // הוספת כפתור מחיקה
+                    const deleteButton = document.createElement("button");
+                    deleteButton.textContent = "מחק";
+                    deleteButton.addEventListener("click", async () => {
+                        if (confirm("האם אתה בטוח שברצונך למחוק את התור?")) {
+                            await deleteAppointmentForClient(doc.id, appointmentData);
+                        }
+                    });
+
+                    li.appendChild(deleteButton); // הוספת כפתור מחיקה
+                    appointmentsList.appendChild(li); // הוספת התור לרשימה
+                });
+            } catch (error) {
+                console.error("שגיאה בטעינת התורים:", error.message);
+                appointmentsList.innerHTML = "<li>שגיאה בטעינת התורים. נסה שוב מאוחר יותר.</li>";
+            }
+        } else {
+            console.error("משתמש לא מחובר.");
+            appointmentsList.innerHTML = "<li>אנא התחבר כדי לראות את התורים שלך.</li>";
+        }
+    });
+}
+
+// קריאה לפונקציה בעת טעינת הדף
+document.addEventListener("DOMContentLoaded", initializeAppointments);
+
+async function deleteAppointmentForClient(appointmentId) {
+    const clientId = auth.currentUser.uid; // מזהה המשתמש המחובר
+
+    try {
+        // שליפת פרטי התור ממסד הנתונים של הלקוח
+        const appointmentRef = doc(db, `users/${clientId}/appointments/${appointmentId}`);
+        const appointmentDoc = await getDoc(appointmentRef);
+
+        if (!appointmentDoc.exists()) {
+            alert("התור לא נמצא.");
+            return;
+        }
+
+        const appointmentData = appointmentDoc.data(); // נתוני התור
+
+        // פרטי חלון הזמן הקשור לתור
+        const businessId = appointmentData.businessId;
+        const employeeId = appointmentData.employeeId;
+        const timeSlotId = appointmentId.split("_")[1]; // ה-ID של חלון הזמן
+
+        // מחיקת התור ממסד הנתונים של הלקוח
+        await deleteDoc(appointmentRef);
+
+        // עדכון חלון הזמן אצל בעל העסק כ"פנוי"
+        const timeSlotRef = doc(
+            db,
+            `businesses/${businessId}/employees/${employeeId}/timeSlots/${timeSlotId}`
+        );
+
+        await updateDoc(timeSlotRef, {
+            isBooked: false, // סימון חלון הזמן כ"פנוי"
+            clientId: null, // מחיקת מזהה הלקוח מהשדה
+        });
+
+        alert("התור נמחק בהצלחה!");
+        initializeAppointments(); // טען מחדש את רשימת התורים
+    } catch (error) {
+        console.error("שגיאה במחיקת התור:", error.message);
+        alert("שגיאה במחיקת התור. נסה שוב מאוחר יותר.");
+    }
+}
