@@ -1079,6 +1079,8 @@ function resetPrice() {
     priceElement.textContent = "מחיר כולל: 0 ₪";
 }
 
+
+
 // מאזינים לכל תיבות הבחירה
 document.getElementById("businessSelect").addEventListener("change", resetPrice);
 document.getElementById("serviceSelect").addEventListener("change", resetPrice);
@@ -1087,37 +1089,65 @@ document.getElementById("dateSelect").addEventListener("change", resetPrice);
 document.getElementById("timeSlotSelect").addEventListener("change", resetPrice);
 
 // 6. פונקציה להוספת תור
-async function addAppointmentForClient(clientId, businessId, serviceId, employeeId, timeSlotId) {
+async function addAppointmentForClient() {
+    const clientId = auth.currentUser.uid; // מזהה המשתמש המחובר
+    const businessId = document.getElementById("businessSelect").value; // מזהה העסק
+    const serviceId = document.getElementById("serviceSelect").value; // מזהה השירות
+    const employeeId = document.getElementById("employeeSelect").value; // מזהה העובד
+    const date = document.getElementById("dateSelect").value; // תאריך שנבחר
+    const timeSlotId = document.getElementById("timeSlotSelect").value; // מזהה חלון הזמן
+
+    // בדיקת תקינות של כל הערכים
+    if (!clientId || !businessId || !serviceId || !employeeId || !date || !timeSlotId) {
+        alert("נא למלא את כל השדות לפני הוספת התור.");
+        return;
+    }
+
     try {
+        // שליפת פרטי חלון הזמן
         const timeSlotRef = doc(
             db,
             `businesses/${businessId}/employees/${employeeId}/timeSlots/${timeSlotId}`
         );
         const timeSlotDoc = await getDoc(timeSlotRef);
+
+        if (!timeSlotDoc.exists()) {
+            alert("חלון הזמן לא קיים.");
+            return;
+        }
+
         const timeSlotData = timeSlotDoc.data();
 
-        // עדכון אצל הלקוח
-        await setDoc(doc(db, `users/${clientId}/appointments, ${businessId}_${timeSlotId}`), {
+        if (timeSlotData.isBooked) {
+            alert("חלון הזמן כבר תפוס.");
+            return;
+        }
+
+        // הוספת התור אצל הלקוח
+        await setDoc(doc(db, `users/${clientId}/appointments/${businessId}_${timeSlotId}`), {
             businessId,
             serviceId,
             employeeId,
             date: timeSlotData.date,
             time: timeSlotData.time,
             price: timeSlotData.price,
+            status: "הוזמן",
         });
 
-        // עדכון אצל העסק
+        // עדכון חלון הזמן אצל בעל העסק
         await updateDoc(timeSlotRef, {
-            isBooked: true,
-            clientId: clientId,
+            isBooked: true, // סימון חלון הזמן כ"תפוס"
+            clientId: clientId, // שמירת מזהה הלקוח
         });
 
         alert("התור נוסף בהצלחה!");
+        // רענון הדף לאחר ההוספה
+        window.location.reload();
     } catch (error) {
-        console.error("שגיאה בהוספת תור:", error.message);
-    }
+        console.error("שגיאה בהוספת התור:", error.message);
+        alert("שגיאה בהוספת התור. נסה שוב מאוחר יותר.");
+    }
 }
-
 // 7. חיבור אירועים לטופס
 document.getElementById("businessSelect").addEventListener("change", async () => {
     const businessId = document.getElementById("businessSelect").value;
@@ -1130,8 +1160,6 @@ document.getElementById("serviceSelect").addEventListener("change", async () => 
     const businessId = document.getElementById("businessSelect").value;
     const serviceId = document.getElementById("serviceSelect").value;
     if (!businessId || !serviceId) return;
-
-    updatePrice(businessId, serviceId);
     await loadEmployees(businessId, serviceId);
 });
 
