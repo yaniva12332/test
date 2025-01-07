@@ -443,50 +443,94 @@ async function fetchAndDisplayTimeSlots() {
         tableBody.innerHTML = "<tr><td colspan='7'>שגיאה בטעינת חלונות הזמן.</td></tr>";
     }
 }
-function editTimeSlotEntry(businessId, employeeId, slotId) {
-    if (!businessId || !employeeId || !slotId) {
-        console.error("אחד הפרמטרים חסר:", { businessId, employeeId, slotId });
-        alert("שגיאה: אחד הפרמטרים חסר.");
-        return;
-    }
+async function editTimeSlotEntry(businessId, employeeId, timeSlotId) {
+    try {
+        // שליפת הנתונים של חלון הזמן
+        const timeSlotRef = doc(db, `businesses/${businessId}/employees/${employeeId}/timeSlots/${timeSlotId}`);
+        const timeSlotDoc = await getDoc(timeSlotRef);
 
-    const newTime = prompt("הזן זמן חדש:");
-    const newPrice = prompt("הזן מחיר חדש:");
+        if (!timeSlotDoc.exists()) {
+            alert("חלון הזמן לא נמצא.");
+            return;
+        }
 
-    if (newTime && newPrice) {
-        const slotRef = doc(db, `businesses/${businessId}/employees/${employeeId}/timeSlots/${slotId}`);
+        const timeSlotData = timeSlotDoc.data();
 
-        updateDoc(slotRef, {
+        // בקשת פרטים חדשים מהמשתמש
+        const newDate = prompt("הזן תאריך חדש (yyyy-mm-dd):", timeSlotData.date || "");
+        const newTime = prompt("הזן זמן חדש (hh:mm):", timeSlotData.time || "");
+        const newService = prompt("הזן שירות חדש:", timeSlotData.service || "");
+        const newPrice = prompt("הזן מחיר חדש:", timeSlotData.price || "");
+
+        // בדיקה אם כל השדות מולאו
+        if (!newDate || !newTime || !newService || !newPrice) {
+            alert("יש למלא את כל השדות!");
+            return;
+        }
+
+        // עדכון חלון הזמן ב-Firebase
+        await updateDoc(timeSlotRef, {
+            date: newDate,
             time: newTime,
+            service: newService,
             price: parseFloat(newPrice),
-        })
-        .then(() => {
-            alert("חלון הזמן עודכן בהצלחה!");
-            fetchAndDisplayTimeSlots();
-        })
-        .catch((error) => {
-            console.error("שגיאה בעדכון חלון הזמן:", error.message);
         });
-    } else {
-        alert("נא להזין פרטים תקינים לעדכון.");
+
+        // עדכון התור גם אצל הלקוח (אם התור קיים אצל לקוח)
+        if (timeSlotData.clientId) {
+            const clientAppointmentRef = doc(
+                db,
+                `users/${timeSlotData.clientId}/appointments/${businessId}_${timeSlotId}`
+            );
+            await updateDoc(clientAppointmentRef, {
+                date: newDate,
+                time: newTime,
+                service: newService,
+                price: parseFloat(newPrice),
+            });
+        }
+
+        alert("חלון הזמן עודכן בהצלחה!");
+        fetchAndDisplayTimeSlots(); // רענון הטבלה לאחר העדכון
+    } catch (error) {
+        console.error("שגיאה בעדכון חלון הזמן:", error.message);
+        alert("שגיאה בעדכון חלון הזמן. נסה שוב מאוחר יותר.");
     }
 }
 
-function deleteTimeSlotEntry(businessId, employeeId, slotId) {
+async function deleteTimeSlotEntry(businessId, employeeId, slotId) {
     if (confirm("האם אתה בטוח שברצונך למחוק את חלון הזמן?")) {
-        const slotRef = doc(
-            db,
-            `businesses/${businessId}/employees/${employeeId}/timeSlots/${slotId}`
-        );
+        try {
+            // שליפת פרטי חלון הזמן לפני המחיקה
+            const slotRef = doc(db, `businesses/${businessId}/employees/${employeeId}/timeSlots/${slotId}`);
+            const slotDoc = await getDoc(slotRef);
 
-        deleteDoc(slotRef)
-            .then(() => {
-                alert("חלון הזמן נמחק בהצלחה!");
-                fetchAndDisplayTimeSlots();
-            })
-            .catch((error) => {
-                console.error("שגיאה במחיקת חלון הזמן:", error.message);
-            });
+            if (!slotDoc.exists()) {
+                alert("חלון הזמן לא נמצא.");
+                return;
+            }
+
+            const slotData = slotDoc.data();
+
+            // מחיקת התור ממסד הנתונים של הלקוח
+            if (slotData.clientId) {
+                const clientId = slotData.clientId;
+                const clientAppointmentId = `${businessId}_${slotId}`;
+                const clientAppointmentRef = doc(db, `users/${clientId}/appointments/${clientAppointmentId}`);
+
+                await deleteDoc(clientAppointmentRef);
+                console.log("התור הוסר גם אצל הלקוח.");
+            }
+
+            // מחיקת חלון הזמן ממסד הנתונים של העסק
+            await deleteDoc(slotRef);
+
+            alert("חלון הזמן נמחק בהצלחה!");
+            fetchAndDisplayTimeSlots(); // עדכון הטבלה לאחר המחיקה
+        } catch (error) {
+            console.error("שגיאה במחיקת חלון הזמן:", error.message);
+            alert("שגיאה במחיקת חלון הזמן. נסה שוב מאוחר יותר.");
+        }
     }
 }
 
@@ -1134,12 +1178,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // פונקציה לטעינת התורים של הלקוח
-function initializeAppointments() {
+async function initializeAppointments() {
     const appointmentsList = document.getElementById("appointments-list");
     appointmentsList.innerHTML = "<li>טוען תורים...</li>";
 
     onAuthStateChanged(auth, async (user) => {
         if (user) {
+            console.log("משתמש מחובר:", user.uid);
             try {
                 const clientId = user.uid;
 
@@ -1156,8 +1201,14 @@ function initializeAppointments() {
                 }
 
                 // מעבר על כל התורים והוספתם לרשימה
-                querySnapshot.forEach((doc) => {
-                    const appointmentData = doc.data();
+                for (const docSnap of querySnapshot.docs) {
+                    const appointmentData = docSnap.data();
+
+                    // שליפת שם העובד
+                    const employeeRef = doc(db, `businesses/${appointmentData.businessId}/employees/${appointmentData.employeeId}`);
+                    const employeeDoc = await getDoc(employeeRef);
+
+                    const employeeName = employeeDoc.exists() ? employeeDoc.data().name : "לא ידוע";
 
                     // יצירת אלמנט עבור כל תור
                     const li = document.createElement("li");
@@ -1165,6 +1216,7 @@ function initializeAppointments() {
                         תאריך: ${appointmentData.date} 
                         | שעה: ${appointmentData.time} 
                         | שירות: ${appointmentData.serviceId} 
+                        | עובד: ${employeeName} 
                         | מחיר: ${appointmentData.price || "לא זמין"} ₪
                     `;
 
@@ -1173,13 +1225,13 @@ function initializeAppointments() {
                     deleteButton.textContent = "מחק";
                     deleteButton.addEventListener("click", async () => {
                         if (confirm("האם אתה בטוח שברצונך למחוק את התור?")) {
-                            await deleteAppointmentForClient(doc.id, appointmentData);
+                            await deleteAppointmentForClient(docSnap.id);
                         }
                     });
 
                     li.appendChild(deleteButton); // הוספת כפתור מחיקה
                     appointmentsList.appendChild(li); // הוספת התור לרשימה
-                });
+                }
             } catch (error) {
                 console.error("שגיאה בטעינת התורים:", error.message);
                 appointmentsList.innerHTML = "<li>שגיאה בטעינת התורים. נסה שוב מאוחר יותר.</li>";
@@ -1187,8 +1239,8 @@ function initializeAppointments() {
         } else {
             console.error("משתמש לא מחובר.");
             appointmentsList.innerHTML = "<li>אנא התחבר כדי לראות את התורים שלך.</li>";
-        }
-    });
+        }
+    });
 }
 
 // קריאה לפונקציה בעת טעינת הדף
@@ -1225,7 +1277,7 @@ async function deleteAppointmentForClient(appointmentId) {
 
         await updateDoc(timeSlotRef, {
             isBooked: false, // סימון חלון הזמן כ"פנוי"
-            clientId: null, // מחיקת מזהה הלקוח מהשדה
+            clientId: null, // מחיקת מזהה הלקוח 
         });
 
         alert("התור נמחק בהצלחה!");
